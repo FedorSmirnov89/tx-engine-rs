@@ -47,3 +47,9 @@ Smaller interactions (e.g., quick fixes, minor refactors) and the use of Agent m
 - **Mode:** Ask
 - **Context:** Explored options for parameterized/property-based testing of the parsing logic (`proptest` vs `rstest`). Discussed how to structure a single cross-product test that encodes the validation rules and scales as new transaction types are added.
 - **Outcome:** Chose `rstest` with `#[values]` over `proptest` — the input space is a small, well-defined partition (amount: positive / zero / negative / missing × transaction type), not a fuzzing problem. Generated a draft for a single parameterized test with inline validation logic.
+
+### 7 — Output Module Design & Tests
+
+- **Mode:** Ask + Agent
+- **Context:** Designed the output layer for converting domain types to serializable output. Discussed the split between lib and main, return type (Vec vs iterator), and whether to sort output.
+- **Outcome:** The lib output module converts `HashMap<ClientId, AccountState>` into an iterator of a `Serialize`-able DTO (`AccountRecord`), keeping the lib format-agnostic — `main` picks the serialization format. No sorting in production code since the spec doesn't require it and the integration tests already normalize order. Generated a draft for the output unit tests.

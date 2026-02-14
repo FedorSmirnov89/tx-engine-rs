@@ -33,12 +33,18 @@ impl Deposit {
 }
 
 /// Id identifying the client issuing the transaction.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub(crate) struct ClientId(u16);
 
 impl ClientId {
     pub(crate) fn new(id: u16) -> Self {
         Self(id)
+    }
+}
+
+impl From<ClientId> for u16 {
+    fn from(value: ClientId) -> Self {
+        value.0
     }
 }
 
@@ -57,4 +63,24 @@ pub(crate) struct AccountState {
     available: Money,
     held: Money,
     locked: bool,
+}
+
+impl AccountState {
+    pub(crate) fn new(available: Money, held: Money, locked: bool) -> Self {
+        Self {
+            available,
+            held,
+            locked,
+        }
+    }
+
+    pub(crate) fn available_funds(&self) -> Decimal {
+        self.available
+    }
+    pub(crate) fn held_funds(&self) -> Decimal {
+        self.held
+    }
+    pub(crate) fn is_locked(&self) -> bool {
+        self.locked
+    }
 }

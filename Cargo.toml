@@ -14,3 +14,4 @@ tracing-subscriber = { version = "0.3.22", features = ["json", "env-filter"] }
 [dev-dependencies]
 claims = "0.8.0"
 rstest = "0.26.1"
+rust_decimal_macros = "1.40.0"
