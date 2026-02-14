@@ -8,7 +8,7 @@ TODO
 
 ## Assumptions
 
-TODO
+- **Zero-amount deposits are rejected.** A deposit of `0.0` has no effect on account balances but would still consume memory when stored for dispute resolution. These are treated as invalid input.
 
 ## Design Decisions
 

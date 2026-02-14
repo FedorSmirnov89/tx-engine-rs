@@ -35,3 +35,15 @@ Smaller interactions (e.g., quick fixes, minor refactors) and the use of Agent m
 - **Mode:** Ask
 - **Context:** Reviewed initial draft of core domain types (`Transaction`, `ClientId`, `TxId`, `AccountState`). Discussed the `Decimal` vs `u64` trade-off for monetary values, whether `total` should be stored or computed, and whether to add timestamps to transactions and accounts.
 - **Outcome:** Removed `total` from `AccountState` (computed on the fly instead — impossible to drift out of sync). Deferred timestamps (no event time in input, processing time is meaningless in batch mode). Both decisions documented in README under Design Decisions and Future Work.
+
+### 5 — Input Parsing Design & Implementation
+
+- **Mode:** Ask + Agent
+- **Context:** Designed the input parsing layer: how to split I/O from parsing, how the `csv` crate integrates, test structure, and error-handling strategy. Also reviewed the implemented parsing logic and tests.
+- **Outcome:** Generated a first draft for the parsing logic and the parsing unit tests. Decided against `thiserror` for now — `anyhow` suffices until there are multiple distinct error variants callers need to branch on.
+
+### 6 — Parameterized Tests with `rstest`
+
+- **Mode:** Ask
+- **Context:** Explored options for parameterized/property-based testing of the parsing logic (`proptest` vs `rstest`). Discussed how to structure a single cross-product test that encodes the validation rules and scales as new transaction types are added.
+- **Outcome:** Chose `rstest` with `#[values]` over `proptest` — the input space is a small, well-defined partition (amount: positive / zero / negative / missing × transaction type), not a fuzzing problem. Generated a draft for a single parameterized test with inline validation logic.
