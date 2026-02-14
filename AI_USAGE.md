@@ -29,3 +29,9 @@ Smaller interactions (e.g., quick fixes, minor refactors) and the use of Agent m
 - **Mode:** Ask
 - **Context:** Discussed whether to include `tokio` from the start, given the planned architecture of one worker per thread with no shared memory between threads.
 - **Outcome:** Decided against using `tokio` for now. The workload is CPU-bound and synchronous — workers receive transactions and update in-memory balances with no I/O to await. `tokio` compile-time cost without benefit here. `tokio` will be introduced when the system boundary changes (e.g., network ingestion, async I/O in the pipeline), at which point the pure, synchronous domain logic can slot cleanly into it.
+
+### 4 — Domain Types Review
+
+- **Mode:** Ask
+- **Context:** Reviewed initial draft of core domain types (`Transaction`, `ClientId`, `TxId`, `AccountState`). Discussed the `Decimal` vs `u64` trade-off for monetary values, whether `total` should be stored or computed, and whether to add timestamps to transactions and accounts.
+- **Outcome:** Removed `total` from `AccountState` (computed on the fly instead — impossible to drift out of sync). Deferred timestamps (no event time in input, processing time is meaningless in batch mode). Both decisions documented in README under Design Decisions and Future Work.
