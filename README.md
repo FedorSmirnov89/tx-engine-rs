@@ -70,6 +70,17 @@ cargo install cargo-nextest --locked
 cargo nextest run
 ```
 
+## CI
+
+Every pull request against `main` runs a GitHub Actions pipeline that enforces:
+
+- **Formatting** — `cargo fmt --all --check` ensures consistent style.
+- **Dependency audit** — `cargo deny check advisories` flags known vulnerabilities in dependencies.
+- **Tests** — `cargo nextest run` runs the full test suite.
+- **Coverage** — `cargo llvm-cov nextest --fail-under-lines 90` enforces a minimum of 90 % line coverage.
+
+The pipeline definition lives in `.github/workflows/ci.yml`.
+
 ## Future Work
 
 - **Transaction timestamps & dispute windows:** In a streaming system, transactions could carry event-time timestamps, enabling eviction of old transactions that are past their dispute window — reducing memory usage in long-running deployments.
