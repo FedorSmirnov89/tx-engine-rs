@@ -10,6 +10,8 @@ TODO
 
 - **Zero-amount deposits are rejected.** A deposit of `0.0` has no effect on account balances but would still consume memory when stored for dispute resolution. These are treated as invalid input.
 
+- **Erroneous transactions are skipped, not fatal.** Errors in the input CSV are handled per transaction — an invalid or malformed row is reported to the caller and otherwise ignored. Processing continues with the remaining transactions. This aligns with safely ignoring nonsensical operations regarding, e.g., disputes referencing non-existing transactions.
+
 ## Design Decisions
 
 ### No async runtime (yet)

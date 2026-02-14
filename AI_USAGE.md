@@ -53,3 +53,9 @@ Smaller interactions (e.g., quick fixes, minor refactors) and the use of Agent m
 - **Mode:** Ask + Agent
 - **Context:** Designed the output layer for converting domain types to serializable output. Discussed the split between lib and main, return type (Vec vs iterator), and whether to sort output.
 - **Outcome:** The lib output module converts `HashMap<ClientId, AccountState>` into an iterator of a `Serialize`-able DTO (`AccountRecord`), keeping the lib format-agnostic — `main` picks the serialization format. No sorting in production code since the spec doesn't require it and the integration tests already normalize order. Generated a draft for the output unit tests.
+
+### 8 — Error Type Design with `thiserror`
+
+- **Mode:** Ask + Agent
+- **Context:** Discussed how to structure the crate's error type — whether to have detailed enum variants per validation case or a flatter design, and how to include transaction context in errors.
+- **Outcome:** Introduced `thiserror` with a flat `Error` enum: `Csv` (wrapping `csv::Error` via `#[from]`) and `Validation` (a struct variant with `client_id`, `tx_id`, and `message`). Detailed per-case variants were deferred since callers don't need to branch on specific validation failures. Agent refactored code from `anyhow` to `thiserror` errors.

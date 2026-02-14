@@ -1,6 +1,5 @@
 //! Module for the (crate-internal) types defining the transaction domain.
 
-use anyhow::{Result, bail};
 use rust_decimal::Decimal;
 
 pub(crate) type Money = Decimal;
@@ -20,9 +19,9 @@ pub(crate) struct Deposit {
 }
 
 impl Deposit {
-    pub(crate) fn new(client_id: ClientId, tx_id: TxId, amount: Money) -> Result<Self> {
+    pub(crate) fn new(client_id: ClientId, tx_id: TxId, amount: Money) -> Result<Self, String> {
         if amount <= Decimal::ZERO {
-            bail!("the deposited amount must be positive")
+            return Err("the deposited amount must be positive".to_string());
         }
         Ok(Self {
             client_id,

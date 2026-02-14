@@ -1,4 +1,5 @@
 use crate::domain::{ClientId, Deposit, Transaction, TxId};
+use crate::error::Error;
 use claims::{assert_err, assert_matches, assert_ok};
 
 use rstest::rstest;
@@ -6,7 +7,7 @@ use rstest::rstest;
 use super::*;
 
 /// Helper: parse a CSV string and collect all results.
-fn parse_csv(input: &str) -> Vec<Result<Transaction>> {
+fn parse_csv(input: &str) -> Vec<Result<Transaction, Error>> {
     parse_transactions(input.as_bytes()).collect()
 }
 

@@ -2,17 +2,19 @@
 
 use std::io::Read;
 
-use anyhow::{Result, bail};
 use rust_decimal::Decimal;
 use serde::Deserialize;
 
 use crate::domain::{ClientId, Deposit, Transaction, TxId};
+use crate::error::{Error, validation_error};
 
 #[cfg(test)]
 mod tests;
 
 /// Parses the data provided by the reader and returns an iterator over the parsing results
-pub(crate) fn parse_transactions(reader: impl Read) -> impl Iterator<Item = Result<Transaction>> {
+pub(crate) fn parse_transactions(
+    reader: impl Read,
+) -> impl Iterator<Item = Result<Transaction, Error>> {
     let csv_reader = csv::ReaderBuilder::new()
         .trim(csv::Trim::All)
         .from_reader(reader);
@@ -36,7 +38,7 @@ struct RawTransaction {
 }
 
 impl TryFrom<RawTransaction> for Transaction {
-    type Error = anyhow::Error;
+    type Error = crate::error::Error;
 
     fn try_from(raw: RawTransaction) -> Result<Self, Self::Error> {
         let RawTransaction {
@@ -50,13 +52,22 @@ impl TryFrom<RawTransaction> for Transaction {
                 let client_id = ClientId::new(client);
                 let tx_id = TxId::new(tx);
                 let Some(amount) = amount else {
-                    bail!("no amount provided for deposit transaction with ID {tx}")
+                    return Err(validation_error(
+                        client,
+                        tx,
+                        "no amount provided for deposit",
+                    ));
                 };
-                Ok(Transaction::Deposit(Deposit::new(
-                    client_id, tx_id, amount,
-                )?))
+                Ok(Transaction::Deposit(
+                    Deposit::new(client_id, tx_id, amount)
+                        .map_err(|msg| validation_error(client, tx, msg))?,
+                ))
             }
-            other => bail!("unknown transaction type: {other}"),
+            other => Err(validation_error(
+                client,
+                tx,
+                format!("unknown transaction type: {other}"),
+            )),
         }
     }
 }
