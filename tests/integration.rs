@@ -2,3 +2,4 @@
 
 mod deposit;
 mod from_file;
+mod scenarios;

@@ -70,6 +70,28 @@ cargo install cargo-nextest --locked
 cargo nextest run
 ```
 
+### Test Strategy
+
+The test suite is organised into three layers:
+
+**Unit tests** (`src/*/tests.rs`) cover individual modules — parsing, output serialization, and domain logic — in isolation.
+
+**Targeted integration tests** (`tests/deposit/`, `tests/from_file/`) exercise specific transaction types through the public `process` API or the compiled binary, using hand-crafted inputs and expected outputs.
+
+**Scenario-based property tests** (`tests/scenarios/`) provide broad, randomised coverage of the engine's overall behaviour. The approach works as follows:
+
+1. **Scenario shapes** are defined in a catalog (`tests/scenarios/catalog.rs`). Each shape describes a fixed sequence of transaction types (e.g. "single deposit", "two deposits") and a formula for the expected outcome — the final account state and which transaction IDs should succeed or error. The formula is trivial arithmetic, not a reimplementation of the engine logic.
+
+2. **`proptest`** generates random parameters for each test run: which shapes to combine, the monetary amounts, and a seed for interleaving. Each shape is assigned a unique client ID and non-overlapping transaction ID range, then built into a concrete `Scenario` with real CSV rows and expected results.
+
+3. **Order-preserving interleaving** combines multiple scenarios into a single CSV input. A shuffled schedule (seeded by `proptest` for reproducibility) determines the order in which rows from different clients appear, while preserving each client's internal transaction chronology. This tests client isolation — one client's transactions must never affect another's state, regardless of how they are interleaved.
+
+4. **Assertion** runs the interleaved CSV through `process`, collecting accounts, successes, and errors into per-client hash maps, then checks each scenario's expectations: account state equality, correct success transaction IDs, and correct error transaction IDs.
+
+Adding a new transaction type requires only defining a new scenario shape in the catalog and registering it in `all_shapes()`. The proptest driver, interleaving logic, and assertion infrastructure remain unchanged.
+
+The test infrastructure itself (interleaving, schedule generation, result collection) is covered by its own dedicated tests to ensure the harness is trustworthy.
+
 ## CI
 
 Every pull request against `main` runs a GitHub Actions pipeline that enforces:
