@@ -21,7 +21,7 @@ pub(crate) struct Withdrawal {
 impl Withdrawal {
     pub(crate) fn new(client_id: ClientId, tx_id: TxId, amount: Money) -> Result<Self, String> {
         if amount <= Decimal::ZERO {
-            return Err("the deposited amount must be positive".to_string());
+            return Err("the withdrawn amount must be positive".to_string());
         }
         Ok(Self {
             client_id,
@@ -126,6 +126,15 @@ impl AccountState {
 
     pub(crate) fn deposit(&mut self, amount: Money) {
         self.available += amount;
+    }
+
+    pub(crate) fn withdraw(&mut self, amount: Money) -> Result<(), String> {
+        if self.available >= amount {
+            self.available -= amount;
+            Ok(())
+        } else {
+            Err(format!("insufficient funds to withdraw {amount}"))
+        }
     }
 
     pub(crate) fn available_funds(&self) -> Decimal {

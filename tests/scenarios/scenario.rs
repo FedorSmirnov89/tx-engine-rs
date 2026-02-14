@@ -85,11 +85,8 @@ pub fn run_process(csv_input: &str) -> ProcessResult {
     let accounts: HashMap<u16, AccountRecord> = tx_engine_rs::process(
         csv_input.as_bytes(),
         |e| {
-            if let Error::Validation {
-                client_id, tx_id, ..
-            } = &e
-            {
-                errors.entry(*client_id).or_default().push(*tx_id);
+            if let Some((client_id, tx_id)) = error_fields(&e) {
+                errors.entry(client_id).or_default().push(tx_id);
             }
         },
         |tx| {
@@ -150,5 +147,17 @@ fn tx_record_fields(tx: &TransactionRecord) -> (u16, u32) {
     match tx {
         TransactionRecord::Deposit { client, tx, .. } => (*client, *tx),
         TransactionRecord::Withdrawal { client, tx, .. } => (*client, *tx),
+    }
+}
+
+fn error_fields(err: &Error) -> Option<(u16, u32)> {
+    match err {
+        Error::Csv(..) => None,
+        Error::Validation {
+            client_id, tx_id, ..
+        } => Some((*client_id, *tx_id)),
+        Error::Processing {
+            client_id, tx_id, ..
+        } => Some((*client_id, *tx_id)),
     }
 }

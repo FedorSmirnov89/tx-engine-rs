@@ -53,9 +53,11 @@ impl TransactionRecord {
                 tx: d.tx_id().into(),
                 amount: d.amount(),
             },
-            Transaction::Withdrawal(withdrawal) => {
-                todo!("making transaction records for a withdrawal")
-            }
+            Transaction::Withdrawal(w) => TransactionRecord::Withdrawal {
+                client: w.client_id().into(),
+                tx: w.tx_id().into(),
+                amount: w.amount(),
+            },
         }
     }
 }

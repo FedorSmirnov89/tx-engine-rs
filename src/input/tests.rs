@@ -54,7 +54,7 @@ fn empty_file_yields_no_transactions() {
 #[rstest]
 fn parse_deposit(
     // client ID and tx ID not varied since all combinations are valid
-    #[values("deposit", "invalid")] tx_type: &str,
+    #[values(TYPE_KW_DEPOSIT, TYPE_KW_WITHDRAWAL, "invalid")] tx_type: &str,
     #[values("1.0", "0.0", "999999.9999", "-1.0", "-0.0001", "")] amount: &str,
 ) {
     // Arrange
@@ -62,7 +62,7 @@ fn parse_deposit(
     let tx_id = 1u32;
 
     let input = format!("type, client, tx, amount\n{tx_type}, {client_id}, {tx_id}, {amount}");
-    let valid_types = ["deposit"];
+    let valid_types = [TYPE_KW_DEPOSIT, TYPE_KW_WITHDRAWAL];
     let is_valid = !amount.is_empty()
         && amount.parse::<Decimal>().unwrap() > Decimal::ZERO
         && valid_types.contains(&tx_type);
@@ -76,8 +76,11 @@ fn parse_deposit(
         let amount = amount.parse::<Decimal>().unwrap();
 
         match tx_type {
-            "deposit" => {
+            TYPE_KW_DEPOSIT => {
                 assert_matches!(tx, Transaction::Deposit(d) if d == Deposit::new(ClientId::new(client_id), TxId::new(tx_id), amount).unwrap() )
+            }
+            TYPE_KW_WITHDRAWAL => {
+                assert_matches!(tx, Transaction::Withdrawal(w) if w == Withdrawal::new(ClientId::new(client_id), TxId::new(tx_id), amount).unwrap() )
             }
             _ => unreachable!("invalid type"),
         }

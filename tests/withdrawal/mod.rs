@@ -110,7 +110,7 @@ withdrawal, 1, 3, 3.0";
     assert!(
         matches!(
             &errors[0],
-            Error::Validation {
+            Error::Processing {
                 client_id: 1,
                 tx_id: 1,
                 ..
