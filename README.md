@@ -12,7 +12,9 @@ TODO
 
 ## Design Decisions
 
-TODO
+### No async runtime (yet)
+
+The processing workload is CPU-bound and synchronous — workers receive transactions and update in-memory balances with nothing to `await`. Adding an async runtime (`tokio`) would introduce compile-time overhead without benefit. The domain logic is kept purely synchronous, making it straightforward to integrate with an async runtime later.
 
 ## Error Handling
 

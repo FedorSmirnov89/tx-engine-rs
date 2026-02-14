@@ -23,3 +23,9 @@ Smaller interactions (e.g., quick fixes, minor refactors) and the use of Agent m
 - **Mode:** Ask
 - **Context:** Draft for the from-file test, based on a given directory structure.
 - **Outcome:** Draft slightly modified and used as the "from-file" test for the case of "two_deposits".
+
+### 3 — Tokio: Use or Not?
+
+- **Mode:** Ask
+- **Context:** Discussed whether to include `tokio` from the start, given the planned architecture of one worker per thread with no shared memory between threads.
+- **Outcome:** Decided against using `tokio` for now. The workload is CPU-bound and synchronous — workers receive transactions and update in-memory balances with no I/O to await. `tokio` compile-time cost without benefit here. `tokio` will be introduced when the system boundary changes (e.g., network ingestion, async I/O in the pipeline), at which point the pure, synchronous domain logic can slot cleanly into it.
