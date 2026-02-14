@@ -1,6 +1,6 @@
 use anyhow::Result;
 use std::{env, fs::File};
-use tx_engine_rs::{Error, process, setup_logging};
+use tx_engine_rs::{Error, TransactionRecord, process, setup_logging};
 
 fn main() -> Result<()> {
     setup_logging()?;
@@ -9,7 +9,7 @@ fn main() -> Result<()> {
     let writer = get_writer();
 
     let mut wtr = csv::Writer::from_writer(writer);
-    for record in process(reader, handle_tx_error) {
+    for record in process(reader, handle_tx_error, handle_tx_success) {
         wtr.serialize(&record)?;
     }
     wtr.flush()?;
@@ -29,7 +29,10 @@ fn get_writer() -> impl std::io::Write {
     std::io::stdout()
 }
 
-// Just logs errors here, but can be changed to do more sophisticated error handling, e.g., corrections or retries
 fn handle_tx_error(error: Error) {
-    tracing::warn!("{error}")
+    tracing::warn!("{error}");
+}
+
+fn handle_tx_success(tx: TransactionRecord) {
+    tracing::info!("Transaction accepted: {tx}");
 }

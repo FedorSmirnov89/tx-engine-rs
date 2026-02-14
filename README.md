@@ -22,9 +22,14 @@ The processing workload is CPU-bound and synchronous — workers receive transac
 
 The two main candidates for representing monetary values are `u64` (storing the smallest unit, e.g., ten-thousandths) and `rust_decimal::Decimal`. `u64` is more compact and inherently non-negative — which fits this domain, since balances should never go negative by design. However, `Decimal` offers easier parsing from the CSV input format and simpler formatting on output, reducing boilerplate at this stage. Since all monetary fields are accessed through a type alias, switching to `u64` later is a low-cost optimization if needed.
 
-### Caller-defined error handling
+### Caller-defined callbacks for success and failure
 
-The library does not prescribe how errors should be handled. Instead, the `process` entry point takes an `on_error` callback that the caller supplies. This offers maximal flexibility: the caller can log, collect, count, or even abort — whatever fits the application. The design was also chosen with a multi-threaded architecture in mind: each worker thread can send errors through a channel to a centralized handler, without requiring any change to the library's API.
+The library does not prescribe how successes or errors should be handled. Instead, the `process` entry point takes two callbacks:
+
+- **`on_error`** — invoked for every transaction that cannot be processed. The caller can log, collect, count, or abort.
+- **`on_success`** — invoked with a reference to each successfully applied transaction. Useful for logging, metrics, publishing events, or progress tracking.
+
+This offers maximal flexibility and keeps the library agnostic about side effects. The design was also chosen with a multi-threaded architecture in mind: each worker thread can send successes and errors through channels to centralized handlers, without requiring any change to the library's API.
 
 ### No timestamps on transactions or accounts
 

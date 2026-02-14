@@ -15,12 +15,20 @@ pub fn setup_logging() -> Result<()> {
     if format == "json" {
         tracing_subscriber::registry()
             .with(env_filter)
-            .with(tracing_subscriber::fmt::layer().json())
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .json()
+                    .with_writer(std::io::stderr), // so that we don't interfere with the std output
+            )
             .init();
     } else {
         tracing_subscriber::registry()
             .with(env_filter)
-            .with(tracing_subscriber::fmt::layer().pretty())
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .pretty()
+                    .with_writer(std::io::stderr), // so that we don't interfere with the std output
+            )
             .init();
     }
     debug!("Debug mode is enabled. Sensitive data might be visible.");

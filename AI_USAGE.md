@@ -65,3 +65,9 @@ Smaller interactions (e.g., quick fixes, minor refactors) and the use of Agent m
 - **Mode:** Ask + Agent
 - **Context:** Designed the public `process` entry point and its error-handling API. Discussed how to give callers full control over what happens with erroneous transactions, and how this design extends to a future multi-threaded architecture where workers send errors through channels.
 - **Outcome:** `process` accepts an `on_error: impl FnMut(Error)` callback — the library reports each error and skips the transaction, while the caller defines the policy (log, collect, abort, etc.). The binary passes a simple logging function. Documented the approach in the README under both Error Handling and Design Decisions. Agent annotated the `process` function with a doc comment covering usage, error semantics, and an example.
+
+### 10 — Success Callback & `TransactionRecord` DTO
+
+- **Mode:** Ask + Agent
+- **Context:** Discussed adding an `on_success` callback to give callers visibility into successfully processed transactions (for logging, metrics, publishing). This raised the question of what type to expose — the internal `Transaction` domain type or a public DTO. Initially made `Transaction` public, but decided against it to keep domain types encapsulated.
+- **Outcome:** Introduced `TransactionRecord` as a public DTO in the output module (mirroring the `AccountRecord` pattern), with `Display`, `Copy`, and `PartialEq`. The engine converts domain transactions to `TransactionRecord` before calling `on_success`. The binary logs each success at `info` level. Also fixed a bug where `tracing`'s default `fmt::layer()` was writing to stdout instead of stderr, which broke the E2E test — resolved by adding `.with_writer(std::io::stderr)`.

@@ -6,8 +6,10 @@ mod output;
 mod telemetry;
 
 pub use error::Error;
-pub use output::AccountRecord;
+pub use output::{AccountRecord, TransactionRecord};
 pub use telemetry::setup_logging;
+
+use crate::input::parse_transactions;
 
 /// Processes financial transactions from a CSV source and returns per-client account records.
 ///
@@ -15,42 +17,43 @@ pub use telemetry::setup_logging;
 /// from `reader`, applies them to in-memory account state, and yields the final balances
 /// as an iterator of [`AccountRecord`]s ready for serialization.
 ///
-/// # Error handling
+/// # Callbacks
 ///
-/// Not every row in the input may be valid — the CSV can contain malformed rows or
-/// transactions that violate domain rules (e.g. a deposit with a negative amount).
-/// Instead of aborting on the first bad row, `process` reports each error to the
-/// caller-supplied `on_error` callback and continues with the remaining input.
+/// The caller controls what happens on success and failure through two callbacks:
 ///
-/// Please use the callback function to define the error hanling most appropriate for your use case.
+/// - **`on_error`** — invoked for every transaction that cannot be processed (malformed CSV
+///   row, domain validation failure, or a processing error such as insufficient funds).
+///   The transaction is skipped and processing continues.
+/// - **`on_success`** — invoked with each [`TransactionRecord`] that was
+///   successfully applied. Useful for logging, metrics, publishing, or progress tracking.
 ///
 ///
 /// # Example
 ///
 /// ```no_run
 /// use std::fs::File;
-/// use tx_engine_rs::{process, Error};
+/// use tx_engine_rs::{process, Error, TransactionRecord};
+/// use tracing::{info, warn};
 ///
 /// let reader = File::open("transactions.csv").unwrap();
 /// let writer = std::io::stdout();
 ///
 /// let mut wtr = csv::Writer::from_writer(writer);
-/// for record in process(reader, |e: Error| eprintln!("skipped: {e}")) {
+/// for record in process(
+///     reader,
+///     |e: Error| warn!("skipped: {e}"),
+///     |tx: TransactionRecord| info!("processed: {tx}"),
+/// ) {
 ///     wtr.serialize(&record).unwrap();
 /// }
 /// wtr.flush().unwrap();
 /// ```
 pub fn process(
     reader: impl std::io::Read,
-    mut on_error: impl FnMut(Error),
+    on_error: impl FnMut(Error),
+    on_success: impl FnMut(TransactionRecord),
 ) -> impl Iterator<Item = AccountRecord> {
-    let transactions = input::parse_transactions(reader).filter_map(move |result| match result {
-        Ok(tx) => Some(tx),
-        Err(e) => {
-            on_error(e);
-            None
-        }
-    });
-    let accounts = engine::process_transactions(transactions);
+    let results = parse_transactions(reader);
+    let accounts = engine::process_transactions(results, on_error, on_success);
     output::to_account_records(accounts)
 }

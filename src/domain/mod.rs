@@ -1,17 +1,17 @@
-//! Module for the (crate-internal) types defining the transaction domain.
+//! Module for the types defining the transaction domain.
 
 use rust_decimal::Decimal;
 
 pub(crate) type Money = Decimal;
 
 /// Transactions are the orders provided to the engine.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Transaction {
     Deposit(Deposit),
 }
 
 /// Data of a deposit transaction
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Deposit {
     client_id: ClientId,
     tx_id: TxId,
@@ -29,10 +29,22 @@ impl Deposit {
             amount,
         })
     }
+
+    pub(crate) fn client_id(&self) -> ClientId {
+        self.client_id
+    }
+
+    pub(crate) fn tx_id(&self) -> TxId {
+        self.tx_id
+    }
+
+    pub(crate) fn amount(&self) -> Money {
+        self.amount
+    }
 }
 
 /// Id identifying the client issuing the transaction.
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub(crate) struct ClientId(u16);
 
 impl ClientId {
@@ -48,7 +60,7 @@ impl From<ClientId> for u16 {
 }
 
 /// The unique ID of a transaction. Used to reference transactions for disputes, resolves, and chargebacks
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) struct TxId(u32);
 
 impl TxId {
@@ -57,7 +69,14 @@ impl TxId {
     }
 }
 
+impl From<TxId> for u32 {
+    fn from(value: TxId) -> Self {
+        value.0
+    }
+}
+
 /// The account state of a client
+#[derive(Debug, Default)]
 pub(crate) struct AccountState {
     available: Money,
     held: Money,
@@ -65,12 +84,17 @@ pub(crate) struct AccountState {
 }
 
 impl AccountState {
+    #[cfg(test)]
     pub(crate) fn new(available: Money, held: Money, locked: bool) -> Self {
         Self {
             available,
             held,
             locked,
         }
+    }
+
+    pub(crate) fn deposit(&mut self, amount: Money) {
+        self.available += amount;
     }
 
     pub(crate) fn available_funds(&self) -> Decimal {
