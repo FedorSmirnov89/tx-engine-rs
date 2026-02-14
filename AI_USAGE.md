@@ -59,3 +59,9 @@ Smaller interactions (e.g., quick fixes, minor refactors) and the use of Agent m
 - **Mode:** Ask + Agent
 - **Context:** Discussed how to structure the crate's error type — whether to have detailed enum variants per validation case or a flatter design, and how to include transaction context in errors.
 - **Outcome:** Introduced `thiserror` with a flat `Error` enum: `Csv` (wrapping `csv::Error` via `#[from]`) and `Validation` (a struct variant with `client_id`, `tx_id`, and `message`). Detailed per-case variants were deferred since callers don't need to branch on specific validation failures. Agent refactored code from `anyhow` to `thiserror` errors.
+
+### 9 — Public API & Caller-Defined Error Handling
+
+- **Mode:** Ask + Agent
+- **Context:** Designed the public `process` entry point and its error-handling API. Discussed how to give callers full control over what happens with erroneous transactions, and how this design extends to a future multi-threaded architecture where workers send errors through channels.
+- **Outcome:** `process` accepts an `on_error: impl FnMut(Error)` callback — the library reports each error and skips the transaction, while the caller defines the policy (log, collect, abort, etc.). The binary passes a simple logging function. Documented the approach in the README under both Error Handling and Design Decisions. Agent annotated the `process` function with a doc comment covering usage, error semantics, and an example.

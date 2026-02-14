@@ -17,11 +17,11 @@ pub(crate) fn to_account_records(
 
 #[derive(Serialize, Debug, PartialEq)]
 pub struct AccountRecord {
-    client: u16,
-    available: Money,
-    held: Money,
-    total: Money,
-    locked: bool,
+    pub client: u16,
+    pub available: Money,
+    pub held: Money,
+    pub total: Money,
+    pub locked: bool,
 }
 
 impl AccountRecord {
