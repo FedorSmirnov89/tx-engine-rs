@@ -8,9 +8,40 @@ pub(crate) type Money = Decimal;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Transaction {
     Deposit(Deposit),
+    Withdrawal(Withdrawal),
 }
 
-/// Data of a deposit transaction
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Withdrawal {
+    client_id: ClientId,
+    tx_id: TxId,
+    amount: Money,
+}
+
+impl Withdrawal {
+    pub(crate) fn new(client_id: ClientId, tx_id: TxId, amount: Money) -> Result<Self, String> {
+        if amount <= Decimal::ZERO {
+            return Err("the deposited amount must be positive".to_string());
+        }
+        Ok(Self {
+            client_id,
+            tx_id,
+            amount,
+        })
+    }
+
+    pub(crate) fn client_id(&self) -> ClientId {
+        self.client_id
+    }
+
+    pub(crate) fn tx_id(&self) -> TxId {
+        self.tx_id
+    }
+
+    pub(crate) fn amount(&self) -> Money {
+        self.amount
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Deposit {
     client_id: ClientId,

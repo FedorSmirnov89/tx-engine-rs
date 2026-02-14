@@ -44,6 +44,7 @@ fn handle_transaction(tx: &Transaction, accounts: &mut Accounts) -> Result<(), E
             handle_deposit(deposit, accounts);
             Ok(())
         }
+        Transaction::Withdrawal(withdrawal) => todo!("handling withdrawal transactions"),
     }
 }
 

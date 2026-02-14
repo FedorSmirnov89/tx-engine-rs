@@ -8,7 +8,7 @@ All architectural decisions, domain modeling, and error-handling strategies were
 
 ## Scope
 
-Smaller interactions (e.g., quick fixes, minor refactors) and the use of Agent mode to adjust documentation files are not documented here.
+Smaller interactions (e.g., quick fixes, minor refactors), the use of Agent mode to adjust documentation files, and Agent-generated test cases based on scenarios I described are not documented here.
 
 ## Interaction Log
 
@@ -83,3 +83,9 @@ Smaller interactions (e.g., quick fixes, minor refactors) and the use of Agent m
 - **Mode:** Agent (supervised)
 - **Context:** Implemented the full `tests/scenarios/` module based on the strategy agreed in entry 11. This included the `Scenario` type, `ScenarioShape` trait, `interleave` function (order-preserving schedule-driven CSV generation), `run_process` (process wrapper collecting results into per-client hash maps), `assert_scenarios` (per-client equality checks), the `build_schedule` function (Fisher-Yates shuffle with a seeded LCG), and the `proptest!` driver that wires everything together.
 - **Outcome:** Agent generated the infrastructure code and tests for the infrastructure (interleave correctness, panic on over/underrun, schedule determinism, schedule count correctness, full roundtrip). All code was reviewed and adjusted during the process — e.g., switching `ProcessResult` from flat vectors to per-client hash maps for simpler assertions, removing stub helpers in favour of real catalog scenarios, and clarifying the tx ID offset convention.
+
+### 13 — Test Coverage Gap Analysis & Additional Tests
+
+- **Mode:** Ask + Agent
+- **Context:** Before starting on the core logic, reviewed existing test coverage to identify gaps. Identified five potential areas: empty input, exact-balance withdrawal boundary, invalid withdrawal amounts (zero/negative), multi-client isolation in targeted tests, and withdrawal on a never-seen client.
+- **Outcome:** Added three items based on my prioritisation: an empty-input edge-case test in the integration root, an `ExactBalanceWithdrawal` scenario shape in the catalog (deposit X, withdraw X, balance = 0), and two targeted tests for zero- and negative-amount withdrawals. Multi-client isolation was already covered by the scenario interleaving; the never-seen-client case was deemed unnecessary given existing overdraft coverage.

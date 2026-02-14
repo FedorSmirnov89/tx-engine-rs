@@ -12,9 +12,9 @@ use scenario::{Scenario, assert_scenarios, interleave, run_process};
 proptest! {
     #[test]
     fn interleaved_scenarios_produce_correct_results(
-        // Bump the upper bound of the first tuple element when the catalog grows beyond 5 shapes.
+        // Bump the upper bound of the first tuple element when the catalog grows beyond 8 shapes.
         // Increase the range of the second tuple element to test more clients simultaneously.
-        shape_indices in prop::collection::vec(0usize..5, 2..=6),
+        shape_indices in prop::collection::vec(0usize..8, 2..=6),
         // Increase the pool size of the second tuple element if shapes need many random parameters or max scenarios grows.
         random_parameters in prop::collection::vec(1u64..100_000, 20),
         seed in any::<u64>(),

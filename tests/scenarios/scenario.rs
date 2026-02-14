@@ -7,6 +7,8 @@ use tx_engine_rs::{AccountRecord, Error, TransactionRecord};
 
 /// A self-contained per-client test story.
 pub struct Scenario {
+    /// Human-readable name for this scenario (used in assertion messages)
+    pub name: &'static str,
     /// Unique client ID for this scenario
     pub client_id: u16,
     /// Ordered CSV rows (without header) for this client
@@ -109,15 +111,16 @@ pub fn run_process(csv_input: &str) -> ProcessResult {
 pub fn assert_scenarios(scenarios: &[Scenario], result: &ProcessResult) {
     for scenario in scenarios {
         let cid = scenario.client_id;
+        let name = scenario.name;
 
         // --- Account state ---
         let account = result
             .accounts
             .get(&cid)
-            .unwrap_or_else(|| panic!("no account record for client {cid}"));
+            .unwrap_or_else(|| panic!("[{name}] no account record for client {cid}"));
         assert_eq!(
             *account, scenario.expected_account,
-            "account mismatch for client {cid}"
+            "[{name}] account mismatch for client {cid}"
         );
 
         // --- Successful transaction IDs ---
@@ -127,7 +130,7 @@ pub fn assert_scenarios(scenarios: &[Scenario], result: &ProcessResult) {
         expected_successes.sort();
         assert_eq!(
             actual_successes, expected_successes,
-            "success tx_id mismatch for client {cid}"
+            "[{name}] success tx_id mismatch for client {cid}"
         );
 
         // --- Error transaction IDs ---
@@ -137,7 +140,7 @@ pub fn assert_scenarios(scenarios: &[Scenario], result: &ProcessResult) {
         expected_errors.sort();
         assert_eq!(
             actual_errors, expected_errors,
-            "error tx_id mismatch for client {cid}"
+            "[{name}] error tx_id mismatch for client {cid}"
         );
     }
 }
@@ -146,5 +149,6 @@ pub fn assert_scenarios(scenarios: &[Scenario], result: &ProcessResult) {
 fn tx_record_fields(tx: &TransactionRecord) -> (u16, u32) {
     match tx {
         TransactionRecord::Deposit { client, tx, .. } => (*client, *tx),
+        TransactionRecord::Withdrawal { client, tx, .. } => (*client, *tx),
     }
 }
