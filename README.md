@@ -20,7 +20,19 @@ TODO
 
 ## Testing
 
-TODO
+Tests are run using [cargo-nextest](https://nexte.st/).
+
+**Install nextest:**
+
+```bash
+cargo install cargo-nextest --locked
+```
+
+**Run all tests:**
+
+```bash
+cargo nextest run
+```
 
 ## Future Work
 
