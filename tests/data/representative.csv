@@ -1,0 +1,353 @@
+type, client, tx, amount
+deposit, 29, 84, 0.2802
+deposit, 62, 184, 0.4605
+deposit, 46, 129, 0.2602
+deposit, 19, 47, 0.1802
+deposit, 96, 284, 0.3802
+deposit, 43, 121, 0.2302
+deposit, 3, 5, 0.0202
+withdrawal, 64, 189, 0.2502
+deposit, 111, 326, 0.5302
+deposit, 15, 36, 0.1402
+deposit, 53, 150, 0.3302
+deposit, 44, 124, 0.2402
+deposit, 21, 55, 0.2002
+deposit, 91, 272, 0.6605
+deposit, 83, 242, 0.4402
+deposit, 47, 131, 0.2702
+deposit, 29, 85, 0.2803
+deposit, 57, 168, 0.3702
+deposit, 36, 104, 0.1602
+deposit, 34, 98, 0.4209
+withdrawal, 35, 101, 0.1502
+deposit, 107, 315, 0.4902
+deposit, 11, 24, 0.2005
+deposit, 88, 266, 0.3002
+deposit, 106, 311, 0.4802
+dispute, 53, 150,
+withdrawal, 11, 25, 0.1003
+dispute, 106, 311,
+deposit, 116, 348, 0.5802
+deposit, 73, 212, 0.3402
+deposit, 18, 43, 0.1702
+deposit, 80, 234, 0.4102
+deposit, 84, 246, 0.4502
+deposit, 20, 51, 0.1902
+deposit, 16, 39, 0.1502
+deposit, 89, 267, 0.3102
+deposit, 86, 256, 0.4702
+dispute, 83, 242,
+deposit, 12, 27, 0.2205
+deposit, 28, 80, 0.2702
+deposit, 65, 192, 0.2602
+deposit, 38, 108, 0.1802
+deposit, 109, 322, 0.5102
+deposit, 86, 257, 0.4703
+deposit, 5, 10, 0.1209
+deposit, 45, 127, 0.2502
+dispute, 44, 124,
+deposit, 23, 60, 0.2202
+deposit, 82, 238, 0.4302
+deposit, 74, 215, 0.3502
+deposit, 22, 58, 0.2102
+deposit, 26, 70, 0.2502
+deposit, 85, 251, 0.4602
+deposit, 25, 66, 0.2402
+deposit, 76, 219, 0.3702
+deposit, 71, 206, 0.3202
+deposit, 77, 223, 0.3802
+deposit, 20, 52, 0.1903
+resolve, 16, 40,
+withdrawal, 12, 28, 0.1103
+withdrawal, 65, 193, 0.5205
+deposit, 87, 260, 0.4802
+dispute, 29, 84,
+withdrawal, 6, 13, 0.0502
+deposit, 1, 2, 0.0002
+deposit, 101, 297, 0.4302
+deposit, 79, 231, 0.4002
+deposit, 41, 115, 0.4205
+deposit, 7, 16, 0.0602
+dispute, 79, 231,
+deposit, 112, 330, 0.5402
+dispute, 82, 238,
+deposit, 30, 90, 0.1002
+deposit, 10, 22, 0.0902
+dispute, 47, 131,
+dispute, 86, 256,
+deposit, 99, 291, 0.8205
+dispute, 111, 326,
+deposit, 37, 106, 0.1702
+deposit, 31, 91, 0.1102
+deposit, 113, 334, 0.5502
+deposit, 113, 335, 0.5503
+deposit, 63, 186, 0.7209
+deposit, 115, 344, 0.5702
+deposit, 97, 286, 0.3902
+deposit, 67, 196, 0.2802
+deposit, 69, 200, 0.6005
+dispute, 73, 212,
+deposit, 100, 294, 0.4202
+deposit, 50, 143, 0.3002
+dispute, 10, 23,
+deposit, 57, 169, 0.3703
+deposit, 94, 280, 0.3602
+deposit, 39, 110, 0.1902
+deposit, 31, 92, 0.1103
+deposit, 58, 172, 0.3802
+chargeback, 53, 150,
+deposit, 105, 307, 0.4702
+deposit, 32, 93, 0.1202
+deposit, 55, 158, 0.3502
+dispute, 96, 284,
+deposit, 48, 135, 0.2802
+deposit, 116, 349, 0.5803
+chargeback, 86, 256,
+dispute, 113, 334,
+deposit, 89, 268, 0.3103
+deposit, 8, 18, 0.0702
+deposit, 61, 181, 0.2202
+deposit, 40, 112, 0.4005
+withdrawal, 93, 277, 0.3502
+deposit, 13, 30, 0.1202
+dispute, 19, 47,
+deposit, 33, 96, 0.2605
+dispute, 18, 43,
+deposit, 107, 316, 0.4903
+withdrawal, 94, 281, 0.7205
+deposit, 72, 209, 0.3302
+withdrawal, 5, 11, 0.0403
+deposit, 2, 3, 0.0102
+deposit, 42, 118, 0.2202
+deposit, 26, 71, 0.2503
+deposit, 87, 261, 0.4803
+resolve, 106, 311,
+withdrawal, 5, 12, 0.0404
+dispute, 77, 223,
+resolve, 19, 47,
+dispute, 105, 307,
+deposit, 28, 81, 0.2703
+dispute, 29, 85,
+deposit, 115, 345, 0.5703
+deposit, 49, 139, 0.2902
+deposit, 72, 210, 0.3303
+dispute, 116, 348,
+deposit, 49, 140, 0.2903
+deposit, 114, 339, 0.5602
+deposit, 56, 163, 0.3602
+resolve, 77, 223,
+deposit, 56, 164, 0.3603
+dispute, 112, 330,
+chargeback, 79, 231,
+dispute, 50, 143,
+deposit, 64, 190, 0.5007
+withdrawal, 33, 97, 0.1303
+dispute, 76, 219,
+withdrawal, 36, 105, 0.3205
+deposit, 32, 94, 0
+dispute, 77, 223,
+deposit, 84, 247, 0.4503
+dispute, 71, 206,
+dispute, 84, 246,
+dispute, 56, 163,
+resolve, 74, 216,
+dispute, 71, 206,
+dispute, 87, 260,
+deposit, 93, 278, 0.7007
+resolve, 105, 307,
+deposit, 54, 154, 0.3402
+withdrawal, 40, 113, 0.2003
+chargeback, 82, 238,
+dispute, 106, 311,
+dispute, 87, 261,
+deposit, 114, 340, 0.5603
+chargeback, 112, 330,
+dispute, 100, 294,
+deposit, 103, 303, 0.4502
+dispute, 72, 209,
+dispute, 67, 196,
+deposit, 78, 227, 0.3902
+chargeback, 29, 84,
+deposit, 70, 203, 0.6205
+resolve, 47, 131,
+withdrawal, 93, 279, 0.3504
+deposit, 95, 282, 0.3702
+dispute, 40, 113,
+deposit, 81, 236, 0.4202
+chargeback, 53, 150,
+dispute, 25, 66,
+resolve, 76, 219,
+deposit, 3, 6, 0
+deposit, 66, 194, 0.2702
+deposit, 4, 8, 0.0605
+deposit, 27, 75, 0.2602
+deposit, 24, 62, 0.2302
+deposit, 68, 198, 0.2902
+chargeback, 113, 334,
+dispute, 54, 154,
+deposit, 102, 300, 0.4402
+withdrawal, 62, 185, 0.2303
+deposit, 52, 148, 0.3202
+deposit, 59, 178, 0.2002
+deposit, 98, 288, 0.8005
+dispute, 102, 300,
+withdrawal, 98, 289, 0.4003
+deposit, 104, 305, 0.4602
+dispute, 48, 135,
+dispute, 15, 36,
+resolve, 73, 212,
+deposit, 55, 159, 0.3503
+deposit, 78, 228, 0.3903
+dispute, 115, 344,
+deposit, 27, 76, 0.2603
+dispute, 42, 118,
+dispute, 116, 349,
+withdrawal, 113, 336, 0.5503
+dispute, 55, 158,
+dispute, 26, 70,
+deposit, 112, 331, 0.5403
+deposit, 85, 252, 0.4603
+dispute, 27, 75,
+chargeback, 83, 242,
+dispute, 20, 51,
+deposit, 108, 319, 0.5002
+resolve, 45, 128,
+deposit, 58, 173, 0.3803
+dispute, 58, 172,
+dispute, 85, 251,
+resolve, 46, 129,
+resolve, 102, 300,
+deposit, 14, 33, 0.1302
+dispute, 107, 315,
+resolve, 20, 51,
+resolve, 48, 135,
+deposit, 14, 34, 0.1303
+deposit, 90, 269, 0.3202
+deposit, 17, 41, 0.1602
+dispute, 114, 339,
+chargeback, 27, 75,
+deposit, 83, 243, 0.4403
+withdrawal, 37, 107, 0.1702
+dispute, 13, 30,
+deposit, 6, 14, 0.1007
+chargeback, 111, 326,
+withdrawal, 7, 17, 0.1205
+resolve, 15, 36,
+chargeback, 29, 85,
+deposit, 75, 217, 0.3602
+withdrawal, 34, 99, 0.1403
+withdrawal, 64, 191, 0.2504
+resolve, 103, 304,
+deposit, 35, 102, 0.3007
+deposit, 90, 270, 0
+deposit, 110, 324, 0.5202
+chargeback, 25, 66,
+withdrawal, 6, 15, 0.0504
+chargeback, 56, 163,
+withdrawal, 70, 204, 0.3103
+dispute, 78, 227,
+dispute, 70, 203,
+withdrawal, 35, 103, 0.1504
+dispute, 58, 173,
+chargeback, 111, 326,
+resolve, 47, 131,
+withdrawal, 69, 201, 0.3003
+dispute, 56, 164,
+deposit, 92, 274, 1.0209
+dispute, 28, 80,
+deposit, 2, 4, 0.0103
+withdrawal, 41, 116, 0.2103
+resolve, 18, 43,
+resolve, 76, 219,
+dispute, 21, 55,
+resolve, 104, 305,
+withdrawal, 66, 195, 0.2702
+chargeback, 28, 80,
+deposit, 101, 298, 0.4303
+dispute, 24, 62,
+deposit, 90, 271, -0.3203
+withdrawal, 34, 100, 0.1404
+withdrawal, 4, 9, 0.0303
+dispute, 41, 115,
+dispute, 68, 199,
+withdrawal, 99, 292, 0.4103
+deposit, 61, 182, 0
+dispute, 57, 168,
+dispute, 108, 319,
+dispute, 49, 139,
+chargeback, 82, 238,
+resolve, 44, 124,
+dispute, 42, 118,
+chargeback, 109, 323,
+deposit, 3, 7, -0.0203
+withdrawal, 63, 187, 0.2403
+chargeback, 85, 251,
+dispute, 100, 294,
+dispute, 97, 287,
+resolve, 18, 43,
+chargeback, 54, 154,
+dispute, 39, 111,
+deposit, 9, 20, 0.0802
+withdrawal, 8, 19, 0.0702
+chargeback, 55, 158,
+withdrawal, 92, 275, 0.3403
+resolve, 49, 139,
+deposit, 25, 67, 0.2403
+chargeback, 26, 70,
+dispute, 27, 76,
+chargeback, 58, 172,
+withdrawal, 63, 188, 0.2404
+deposit, 60, 179, 0.2102
+dispute, 48, 135,
+chargeback, 81, 236,
+chargeback, 84, 246,
+withdrawal, 95, 283, 0.3702
+chargeback, 50, 143,
+chargeback, 110, 324,
+chargeback, 58, 173,
+resolve, 107, 315,
+chargeback, 21, 55,
+dispute, 9, 20,
+dispute, 12, 27,
+deposit, 32, 95, -0.1203
+resolve, 17, 41,
+dispute, 98, 289,
+dispute, 14, 33,
+chargeback, 24, 62,
+chargeback, 23, 60,
+chargeback, 57, 168,
+dispute, 11, 25,
+chargeback, 87, 260,
+dispute, 13, 30,
+chargeback, 22, 59,
+deposit, 51, 146, 0.3102
+chargeback, 116, 348,
+chargeback, 80, 235,
+chargeback, 114, 339,
+resolve, 105, 307,
+withdrawal, 91, 273, 0.3303
+chargeback, 51, 147,
+chargeback, 52, 148,
+deposit, 43, 122, 0.2303
+dispute, 19, 47,
+dispute, 99, 291,
+chargeback, 108, 319,
+deposit, 61, 183, -0.2203
+dispute, 85, 252,
+deposit, 60, 180, 0.2103
+withdrawal, 55, 160, 0.3503
+withdrawal, 26, 72, 0.2503
+chargeback, 87, 261,
+dispute, 43, 121,
+dispute, 69, 201,
+chargeback, 116, 349,
+dispute, 38, 108,
+deposit, 54, 155, 0.3403
+chargeback, 115, 344,
+resolve, 75, 217,
+dispute, 114, 340,
+withdrawal, 84, 248, 0.4503
+chargeback, 24, 62,
+withdrawal, 92, 276, 0.3404
+resolve, 78, 227,
+dispute, 101, 297,

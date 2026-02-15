@@ -2,8 +2,8 @@
 //! Combines multiple per-client scenarios with random parameters and interleaving
 //! to verify correctness, client isolation, and ordering.
 
-mod catalog;
-mod scenario;
+pub(crate) mod catalog;
+pub(crate) mod scenario;
 
 use proptest::prelude::*;
 use rust_decimal::Decimal;
@@ -61,7 +61,7 @@ proptest! {
 /// Builds a schedule that references each scenario index exactly as many times
 /// as it has transactions, then shuffles it (preserving per-scenario order
 /// via the cursor mechanism in `interleave`).
-fn build_schedule(scenarios: &[Scenario], seed: u64) -> Vec<usize> {
+pub(crate) fn build_schedule(scenarios: &[Scenario], seed: u64) -> Vec<usize> {
     // Flat list: [0, 0, ..., 1, 1, ..., 2, ...]
     let mut schedule: Vec<usize> = scenarios
         .iter()
