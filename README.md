@@ -4,7 +4,46 @@ A high-performance transaction processing engine in Rust. Ingests a stream of fi
 
 ## Usage
 
-TODO
+**Build:**
+
+```bash
+cargo build --release
+```
+
+**Run:**
+
+```bash
+cargo run -- transactions.csv > accounts.csv
+```
+
+The engine reads a CSV file of transactions from the path given as the first argument and writes the resulting account states to STDOUT. Logs are written to STDERR so they don't interfere with the data output.
+
+**Environment variables:**
+
+| Variable     | Default  | Description                                      |
+|--------------|----------|--------------------------------------------------|
+| `RUST_LOG`   | `info`   | Log level filter (e.g. `debug`, `warn`, `off`)   |
+| `LOG_FORMAT` | `pretty` | Log output format (`pretty` or `json`)           |
+
+**Input format:**
+
+```csv
+type,client,tx,amount
+deposit,1,1,1.0
+deposit,2,2,2.0
+deposit,1,3,2.0
+withdrawal,1,4,1.5
+dispute,1,3,
+resolve,1,3,
+```
+
+**Output format:**
+
+```csv
+client,available,held,total
+1,1.5,0,1.5
+2,2,0,2
+```
 
 ## Assumptions
 
@@ -59,6 +98,7 @@ The engine is designed to process large, potentially messy CSV inputs without ab
 
 - **CSV-level errors** — malformed rows that the `csv` crate cannot deserialize (e.g. missing columns, unparseable numbers).
 - **Validation errors** — well-formed rows that violate domain rules (e.g. a deposit with a negative or zero amount, an unknown transaction type). These carry structured context: the `client_id`, `tx_id`, and a human-readable message.
+- **Processing errors** — valid transactions that conflict with the current account state (e.g. a withdrawal exceeding the available balance, a dispute on an already-disputed transaction, any operation on a frozen account). These also carry `client_id`, `tx_id`, and a descriptive message.
 
 Rather than choosing a fixed error policy inside the library, the `process` entry point accepts a caller-supplied callback (`on_error: impl FnMut(Error)`) that is invoked for every problematic transaction. The transaction is then skipped and processing continues.
 
@@ -115,6 +155,7 @@ The test infrastructure itself (interleaving, schedule generation, result collec
 Every pull request against `main` runs a GitHub Actions pipeline that enforces:
 
 - **Formatting** — `cargo fmt --all --check` ensures consistent style.
+- **Linting** — `cargo clippy --all-targets -- -D warnings` catches common mistakes and enforces idiomatic Rust.
 - **Dependency audit** — `cargo deny check advisories` flags known vulnerabilities in dependencies.
 - **Tests** — `cargo nextest run` runs the full test suite.
 - **Coverage** — `cargo llvm-cov nextest --fail-under-lines 90` enforces a minimum of 90 % line coverage.

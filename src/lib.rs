@@ -48,6 +48,7 @@ use crate::input::parse_transactions;
 /// }
 /// wtr.flush().unwrap();
 /// ```
+#[must_use = "this iterator is lazy and must be consumed to process the account states"]
 pub fn process(
     reader: impl std::io::Read,
     on_error: impl FnMut(Error),
