@@ -12,6 +12,7 @@ pub(crate) enum Transaction {
     Deposit(Deposit),
     Withdrawal(Withdrawal),
     Dispute(Dispute),
+    Resolve(Resolve),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -100,6 +101,29 @@ impl Dispute {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Resolve {
+    client_id: ClientId,
+    resolved_tx: TxId,
+}
+
+impl Resolve {
+    pub(crate) fn new(client_id: ClientId, resolved_tx: TxId) -> Self {
+        Self {
+            client_id,
+            resolved_tx,
+        }
+    }
+
+    pub(crate) fn client_id(&self) -> ClientId {
+        self.client_id
+    }
+
+    pub(crate) fn resolved_tx_id(&self) -> TxId {
+        self.resolved_tx
+    }
+}
+
 /// Id identifying the client issuing the transaction.
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub(crate) struct ClientId(u16);
@@ -171,11 +195,7 @@ impl AccountState {
     }
 
     pub(crate) fn dispute(&mut self, disputed_tx: TxId) -> Result<(), String> {
-        if self.accepted_deposits.contains_key(&disputed_tx) {
-            let deposit_amount = self
-                .accepted_deposits
-                .get(&disputed_tx)
-                .expect("presence checked above");
+        if let Some(deposit_amount) = self.accepted_deposits.get(&disputed_tx) {
             if self.available >= *deposit_amount {
                 let disputed_amount = self
                     .accepted_deposits
@@ -190,6 +210,21 @@ impl AccountState {
             }
         } else {
             Err("dispute referencing unknown transaction".to_string())
+        }
+    }
+
+    pub(crate) fn resolve(&mut self, resolved_tx: TxId) -> Result<(), String> {
+        if let Some(resolved_amount) = self.disputed_deposits.remove(&resolved_tx) {
+            debug_assert!(
+                self.held_funds() >= resolved_amount,
+                "internal logic error: held funds too low"
+            );
+            self.held -= resolved_amount;
+            self.available += resolved_amount;
+            self.accepted_deposits.insert(resolved_tx, resolved_amount);
+            Ok(())
+        } else {
+            Err("resolve referencing unknown/undisputed transaction".to_string())
         }
     }
 
