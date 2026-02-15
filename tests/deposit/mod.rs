@@ -1,6 +1,6 @@
 //! Integration tests for deposit transactions
 
-use tx_engine_rs::{AccountRecord, TransactionRecord, process};
+use tx_engine_rs::{AccountRecord, Error, TransactionRecord, process};
 
 use rust_decimal_macros::dec;
 
@@ -41,5 +41,63 @@ deposit, 1, 1, 1.5";
             tx: 1,
             amount: dec!(1.5),
         }
+    );
+}
+
+#[test]
+fn deposit_with_zero_amount_is_rejected() {
+    let input = "\
+type, client, tx, amount
+deposit, 1, 1, 0";
+
+    let mut errors: Vec<Error> = Vec::new();
+    let records: Vec<AccountRecord> = process(
+        input.as_bytes(),
+        |e| errors.push(e),
+        |_| panic!("unexpected success"),
+    )
+    .collect();
+
+    assert!(records.is_empty(), "no account should be created");
+    assert_eq!(errors.len(), 1);
+    assert!(
+        matches!(
+            &errors[0],
+            Error::Validation {
+                client_id: 1,
+                tx_id: 1,
+                ..
+            }
+        ),
+        "expected a validation error for client 1, tx 1"
+    );
+}
+
+#[test]
+fn deposit_with_negative_amount_is_rejected() {
+    let input = "\
+type, client, tx, amount
+deposit, 1, 1, -5.0";
+
+    let mut errors: Vec<Error> = Vec::new();
+    let records: Vec<AccountRecord> = process(
+        input.as_bytes(),
+        |e| errors.push(e),
+        |_| panic!("unexpected success"),
+    )
+    .collect();
+
+    assert!(records.is_empty(), "no account should be created");
+    assert_eq!(errors.len(), 1);
+    assert!(
+        matches!(
+            &errors[0],
+            Error::Validation {
+                client_id: 1,
+                tx_id: 1,
+                ..
+            }
+        ),
+        "expected a validation error for client 1, tx 1"
     );
 }

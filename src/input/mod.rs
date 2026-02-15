@@ -5,8 +5,11 @@ use std::io::Read;
 use rust_decimal::Decimal;
 use serde::Deserialize;
 
-use crate::domain::{ClientId, Deposit, Transaction, TxId};
+use crate::domain::{ClientId, Deposit, Transaction, TxId, Withdrawal};
 use crate::error::{Error, validation_error};
+
+pub(crate) const TYPE_KW_DEPOSIT: &str = "deposit";
+pub(crate) const TYPE_KW_WITHDRAWAL: &str = "withdrawal";
 
 #[cfg(test)]
 mod tests;
@@ -47,10 +50,12 @@ impl TryFrom<RawTransaction> for Transaction {
             tx,
             amount,
         } = raw;
+
+        let client_id = ClientId::new(client);
+        let tx_id = TxId::new(tx);
+
         match tx_type.as_str() {
-            "deposit" => {
-                let client_id = ClientId::new(client);
-                let tx_id = TxId::new(tx);
+            TYPE_KW_DEPOSIT => {
                 let Some(amount) = amount else {
                     return Err(validation_error(
                         client,
@@ -60,6 +65,19 @@ impl TryFrom<RawTransaction> for Transaction {
                 };
                 Ok(Transaction::Deposit(
                     Deposit::new(client_id, tx_id, amount)
+                        .map_err(|msg| validation_error(client, tx, msg))?,
+                ))
+            }
+            TYPE_KW_WITHDRAWAL => {
+                let Some(amount) = amount else {
+                    return Err(validation_error(
+                        client,
+                        tx,
+                        "no amount provided for withdrawal",
+                    ));
+                };
+                Ok(Transaction::Withdrawal(
+                    Withdrawal::new(client_id, tx_id, amount)
                         .map_err(|msg| validation_error(client, tx, msg))?,
                 ))
             }

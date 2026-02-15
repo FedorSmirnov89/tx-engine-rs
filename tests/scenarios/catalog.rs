@@ -21,6 +21,7 @@ impl ScenarioShape for SingleDeposit {
         let tx_id = tx_id_offset + 1;
 
         Scenario {
+            name: "SingleDeposit",
             client_id,
             transactions: vec![format!("deposit, {client_id}, {tx_id}, {amount}")],
             expected_account: AccountRecord {
@@ -46,6 +47,7 @@ impl ScenarioShape for TwoDeposits {
         let amount_b = random_parameters[1];
 
         Scenario {
+            name: "TwoDeposits",
             client_id,
             transactions: vec![
                 format!(
@@ -93,6 +95,7 @@ impl ScenarioShape for DepositsWithInvalidAmounts {
         let tx_negative = tx_id_offset + 3;
 
         Scenario {
+            name: "DepositsWithInvalidAmounts",
             client_id,
             transactions: vec![
                 format!("deposit, {client_id}, {tx_valid}, {valid_amount}"),
@@ -112,12 +115,207 @@ impl ScenarioShape for DepositsWithInvalidAmounts {
     }
 }
 
+/// Deposit then withdraw a smaller amount. Both succeed.
+/// params: [0] = deposit - withdrawal, [1] = withdrawal (deposit always >= withdrawal)
+pub struct DepositThenWithdraw;
+
+impl ScenarioShape for DepositThenWithdraw {
+    fn num_random_parameters(&self) -> usize {
+        2
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let deposit = random_parameters[0] + random_parameters[1];
+        let withdrawal = random_parameters[1];
+        let remaining = deposit - withdrawal; // = random_parameters[0], always positive
+
+        let tx_dep = tx_id_offset + 1;
+        let tx_wdr = tx_id_offset + 2;
+
+        Scenario {
+            name: "DepositThenWithdraw",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx_dep}, {deposit}"),
+                format!("withdrawal, {client_id}, {tx_wdr}, {withdrawal}"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: remaining,
+                held: Decimal::ZERO,
+                total: remaining,
+                locked: false,
+            },
+            expected_successes: vec![tx_dep, tx_wdr],
+            expected_errors: vec![],
+        }
+    }
+}
+
+/// Deposit a large amount, then withdraw twice. All three succeed.
+/// params: [0] = extra remaining, [1] = first withdrawal, [2] = second withdrawal
+/// deposit = params[0] + params[1] + params[2], so both withdrawals fit.
+pub struct DepositThenTwoWithdrawals;
+
+impl ScenarioShape for DepositThenTwoWithdrawals {
+    fn num_random_parameters(&self) -> usize {
+        3
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let wdr_a = random_parameters[1];
+        let wdr_b = random_parameters[2];
+        let deposit = random_parameters[0] + wdr_a + wdr_b;
+        let remaining = deposit - wdr_a - wdr_b;
+
+        let tx_dep = tx_id_offset + 1;
+        let tx_wdr_a = tx_id_offset + 2;
+        let tx_wdr_b = tx_id_offset + 3;
+
+        Scenario {
+            name: "DepositThenTwoWithdrawals",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx_dep}, {deposit}"),
+                format!("withdrawal, {client_id}, {tx_wdr_a}, {wdr_a}"),
+                format!("withdrawal, {client_id}, {tx_wdr_b}, {wdr_b}"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: remaining,
+                held: Decimal::ZERO,
+                total: remaining,
+                locked: false,
+            },
+            expected_successes: vec![tx_dep, tx_wdr_a, tx_wdr_b],
+            expected_errors: vec![],
+        }
+    }
+}
+
+/// Withdraw with no funds (fails), then deposit, then withdraw within balance (succeeds).
+/// params: [0] = failed withdrawal amount, [1] = deposit, [2] = valid withdrawal (< deposit)
+/// deposit = params[1] + params[2], valid withdrawal = params[2], so it always fits.
+pub struct OverdraftThenDepositThenWithdraw;
+
+impl ScenarioShape for OverdraftThenDepositThenWithdraw {
+    fn num_random_parameters(&self) -> usize {
+        3
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let overdraft = random_parameters[0];
+        let deposit = random_parameters[1] + random_parameters[2];
+        let valid_wdr = random_parameters[2];
+        let remaining = deposit - valid_wdr; // = random_parameters[1]
+
+        let tx_overdraft = tx_id_offset + 1;
+        let tx_dep = tx_id_offset + 2;
+        let tx_wdr = tx_id_offset + 3;
+
+        Scenario {
+            name: "OverdraftThenDepositThenWithdraw",
+            client_id,
+            transactions: vec![
+                format!("withdrawal, {client_id}, {tx_overdraft}, {overdraft}"),
+                format!("deposit, {client_id}, {tx_dep}, {deposit}"),
+                format!("withdrawal, {client_id}, {tx_wdr}, {valid_wdr}"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: remaining,
+                held: Decimal::ZERO,
+                total: remaining,
+                locked: false,
+            },
+            expected_successes: vec![tx_dep, tx_wdr],
+            expected_errors: vec![tx_overdraft],
+        }
+    }
+}
+
+/// Deposit then attempt to withdraw more than the balance. The withdrawal fails.
+/// params: [0] = deposit, [1] = extra (withdrawal = deposit + extra, always > deposit)
+pub struct DepositThenOverdraft;
+
+impl ScenarioShape for DepositThenOverdraft {
+    fn num_random_parameters(&self) -> usize {
+        2
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let deposit = random_parameters[0];
+        let withdrawal = random_parameters[0] + random_parameters[1]; // always > deposit
+
+        let tx_dep = tx_id_offset + 1;
+        let tx_wdr = tx_id_offset + 2;
+
+        Scenario {
+            name: "DepositThenOverdraft",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx_dep}, {deposit}"),
+                format!("withdrawal, {client_id}, {tx_wdr}, {withdrawal}"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: deposit,
+                held: Decimal::ZERO,
+                total: deposit,
+                locked: false,
+            },
+            expected_successes: vec![tx_dep],
+            expected_errors: vec![tx_wdr],
+        }
+    }
+}
+
+/// Deposit then withdraw the exact same amount. Both succeed, balance = 0.
+/// params: [0] = the amount for both deposit and withdrawal
+pub struct ExactBalanceWithdrawal;
+
+impl ScenarioShape for ExactBalanceWithdrawal {
+    fn num_random_parameters(&self) -> usize {
+        1
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let amount = random_parameters[0];
+
+        let tx_dep = tx_id_offset + 1;
+        let tx_wdr = tx_id_offset + 2;
+
+        Scenario {
+            name: "ExactBalanceWithdrawal",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx_dep}, {amount}"),
+                format!("withdrawal, {client_id}, {tx_wdr}, {amount}"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: Decimal::ZERO,
+                held: Decimal::ZERO,
+                total: Decimal::ZERO,
+                locked: false,
+            },
+            expected_successes: vec![tx_dep, tx_wdr],
+            expected_errors: vec![],
+        }
+    }
+}
+
 /// Returns all available scenario shapes.
 pub fn all_shapes() -> Vec<Box<dyn ScenarioShape>> {
     vec![
         Box::new(SingleDeposit),
         Box::new(TwoDeposits),
         Box::new(DepositsWithInvalidAmounts),
+        Box::new(DepositThenWithdraw),
+        Box::new(DepositThenTwoWithdrawals),
+        Box::new(OverdraftThenDepositThenWithdraw),
+        Box::new(DepositThenOverdraft),
+        Box::new(ExactBalanceWithdrawal),
         // ... add more as transaction types are implemented
     ]
 }
