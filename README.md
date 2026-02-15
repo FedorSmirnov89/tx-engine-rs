@@ -12,6 +12,8 @@ TODO
 
 - **Zero-amount withdrawals are rejected.** Same reasoning as zero-amount deposits — no effect on balances, waste of processing and storage.
 
+- **Transaction type keywords are lowercase.** The input is expected to use exact lowercase keywords (`deposit`, `withdrawal`, `dispute`, `resolve`, `chargeback`). Mixed or uppercase variants are treated as unknown types and rejected.
+
 - **Erroneous transactions are skipped, not fatal.** Errors in the input CSV are handled per transaction — an invalid or malformed row is reported to the caller and otherwise ignored. Processing continues with the remaining transactions. This aligns with safely ignoring nonsensical operations regarding, e.g., disputes referencing non-existing transactions.
 
 - **Only deposits can be disputed.** A dispute on a withdrawal is ignored. If a client is unhappy with a withdrawal, the recourse is with the destination they withdrew to — our system has no mechanism to "undo" funds that have already left. Conversely, disputing a deposit (incoming funds) is the standard chargeback model: the sender claims the transfer was erroneous, and we must act to prevent a double spend.
@@ -42,6 +44,10 @@ The library does not prescribe how successes or errors should be handled. Instea
 - **`on_success`** — invoked with a reference to each successfully applied transaction. Useful for logging, metrics, publishing events, or progress tracking.
 
 This offers maximal flexibility and keeps the library agnostic about side effects. The design was also chosen with a multi-threaded architecture in mind: each worker thread can send successes and errors through channels to centralized handlers, without requiring any change to the library's API.
+
+### Minimal storage for the transaction log
+
+Deposits must be stored for dispute resolution, but the only field consumed by a dispute (and later resolve/chargeback) is the amount — the client ID is already the outer map key and the transaction ID is the inner map key. Storing the full `Deposit` struct would duplicate both. The transaction log therefore stores only the `Money` amount per entry, minimising per-transaction memory overhead. If future features (e.g., timestamps, dispute windows) require additional metadata, the value type can be promoted to a dedicated struct without changing the `AccountState` API — the storage is fully encapsulated behind its methods.
 
 ### No timestamps on transactions or accounts
 

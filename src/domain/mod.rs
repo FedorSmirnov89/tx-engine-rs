@@ -1,5 +1,7 @@
 //! Module for the types defining the transaction domain.
 
+use std::collections::HashMap;
+
 use rust_decimal::Decimal;
 
 pub(crate) type Money = Decimal;
@@ -9,6 +11,7 @@ pub(crate) type Money = Decimal;
 pub(crate) enum Transaction {
     Deposit(Deposit),
     Withdrawal(Withdrawal),
+    Dispute(Dispute),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -74,6 +77,29 @@ impl Deposit {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Dispute {
+    client_id: ClientId,
+    disputed_tx: TxId,
+}
+
+impl Dispute {
+    pub(crate) fn new(client_id: ClientId, disputed_tx: TxId) -> Self {
+        Self {
+            client_id,
+            disputed_tx,
+        }
+    }
+
+    pub(crate) fn client_id(&self) -> ClientId {
+        self.client_id
+    }
+
+    pub(crate) fn disputed_tx_id(&self) -> TxId {
+        self.disputed_tx
+    }
+}
+
 /// Id identifying the client issuing the transaction.
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub(crate) struct ClientId(u16);
@@ -91,7 +117,7 @@ impl From<ClientId> for u16 {
 }
 
 /// The unique ID of a transaction. Used to reference transactions for disputes, resolves, and chargebacks
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub(crate) struct TxId(u32);
 
 impl TxId {
@@ -109,6 +135,9 @@ impl From<TxId> for u32 {
 /// The account state of a client
 #[derive(Debug, Default)]
 pub(crate) struct AccountState {
+    accepted_deposits: HashMap<TxId, Money>,
+    disputed_deposits: HashMap<TxId, Money>,
+
     available: Money,
     held: Money,
     locked: bool,
@@ -118,14 +147,18 @@ impl AccountState {
     #[cfg(test)]
     pub(crate) fn new(available: Money, held: Money, locked: bool) -> Self {
         Self {
+            accepted_deposits: HashMap::new(),
+            disputed_deposits: HashMap::new(),
             available,
             held,
             locked,
         }
     }
 
-    pub(crate) fn deposit(&mut self, amount: Money) {
-        self.available += amount;
+    pub(crate) fn deposit(&mut self, deposit: Deposit) {
+        self.available += deposit.amount();
+        self.accepted_deposits
+            .insert(deposit.tx_id(), deposit.amount());
     }
 
     pub(crate) fn withdraw(&mut self, amount: Money) -> Result<(), String> {
@@ -134,6 +167,29 @@ impl AccountState {
             Ok(())
         } else {
             Err(format!("insufficient funds to withdraw {amount}"))
+        }
+    }
+
+    pub(crate) fn dispute(&mut self, disputed_tx: TxId) -> Result<(), String> {
+        if self.accepted_deposits.contains_key(&disputed_tx) {
+            let deposit_amount = self
+                .accepted_deposits
+                .get(&disputed_tx)
+                .expect("presence checked above");
+            if self.available >= *deposit_amount {
+                let disputed_amount = self
+                    .accepted_deposits
+                    .remove(&disputed_tx)
+                    .expect("presence checked above");
+                self.available -= disputed_amount;
+                self.held += disputed_amount;
+                self.disputed_deposits.insert(disputed_tx, disputed_amount);
+                Ok(())
+            } else {
+                Err("the funds of the disputed deposit were already withdrawn".to_string())
+            }
+        } else {
+            Err("dispute referencing unknown transaction".to_string())
         }
     }
 

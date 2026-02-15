@@ -59,6 +59,10 @@ impl TransactionRecord {
                 tx: w.tx_id().into(),
                 amount: w.amount(),
             },
+            Transaction::Dispute(d) => TransactionRecord::Dispute {
+                client: d.client_id().into(),
+                tx: d.disputed_tx_id().into(),
+            },
         }
     }
 }
