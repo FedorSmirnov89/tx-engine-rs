@@ -9,53 +9,69 @@ use proptest::prelude::*;
 use rust_decimal::Decimal;
 use scenario::{Scenario, assert_scenarios, interleave, run_process};
 
+use crate::scenarios::scenario::{ProcessResult, run_process_parallel};
+
+const CHANNEL_CAPACITY: usize = 256;
+
 proptest! {
     #[test]
     fn interleaved_scenarios_produce_correct_results(
-        // Bump the upper bound of the first tuple element when the catalog grows beyond 8 shapes.
-        // Increase the range of the second tuple element to test more clients simultaneously.
         shape_indices in prop::collection::vec(0usize..29, 2..=6),
-        // Increase the pool size if shapes need many random parameters or max scenarios grows.
         random_parameters in prop::collection::vec(1u64..100_000, 50),
         seed in any::<u64>(),
     ) {
-        let catalog = catalog::all_shapes();
-
-        // 1. Pick shapes from the catalog, clamping indices to catalog size
-        // 2. Build concrete scenarios with unique client_ids and non-overlapping tx_id ranges
-        let mut param_cursor = 0;
-        let mut tx_id_offset = 1u32;
-        let mut scenarios = Vec::new();
-
-        for (i, &idx) in shape_indices.iter().enumerate() {
-            let shape = &catalog[idx % catalog.len()];
-            let client_id = (i + 1) as u16;
-            let n = shape.num_random_parameters();
-
-            // Pull random parameters from the pool, wrapping if we run out
-            let params: Vec<Decimal> = (0..n)
-                .map(|j| {
-                    let raw = random_parameters[(param_cursor + j) % random_parameters.len()];
-                    Decimal::new(raw as i64, 4) // e.g. 12345 -> 1.2345
-                })
-                .collect();
-            param_cursor += n;
-
-            let scenario = shape.build(client_id, tx_id_offset, &params);
-            tx_id_offset += scenario.transactions.len() as u32;
-            scenarios.push(scenario);
-        }
-
-        // 3. Build an order-preserving interleaving schedule from the seed
-        let schedule = build_schedule(&scenarios, seed);
-
-        // 4. Interleave into a single CSV and run the engine
-        let csv = interleave(&scenarios, &schedule);
-        let result = run_process(&csv);
-
-        // 5. Assert every scenario's expectations
-        assert_scenarios(&scenarios, &result);
+        run_scenario_test(shape_indices, random_parameters, seed, run_process);
     }
+
+    #[test]
+    fn interleaved_scenarios_produce_correct_results_parallel(
+        shape_indices in prop::collection::vec(0usize..29, 2..=6),
+        random_parameters in prop::collection::vec(1u64..100_000, 50),
+        seed in any::<u64>(),
+    ) {
+        let n_workers = std::thread::available_parallelism()
+            .map(|n| n.get().saturating_sub(1).max(1))
+            .unwrap_or(1);
+        run_scenario_test(shape_indices, random_parameters, seed, |csv| {
+            run_process_parallel(csv, n_workers, CHANNEL_CAPACITY)
+        });
+    }
+}
+
+fn run_scenario_test(
+    shape_indices: Vec<usize>,
+    random_parameters: Vec<u64>,
+    seed: u64,
+    runner: impl Fn(&str) -> ProcessResult,
+) {
+    let catalog = catalog::all_shapes();
+
+    let mut param_cursor = 0;
+    let mut tx_id_offset = 1u32;
+    let mut scenarios = Vec::new();
+
+    for (i, &idx) in shape_indices.iter().enumerate() {
+        let shape = &catalog[idx % catalog.len()];
+        let client_id = (i + 1) as u16;
+        let n = shape.num_random_parameters();
+
+        let params: Vec<Decimal> = (0..n)
+            .map(|j| {
+                let raw = random_parameters[(param_cursor + j) % random_parameters.len()];
+                Decimal::new(raw as i64, 4)
+            })
+            .collect();
+        param_cursor += n;
+
+        let scenario = shape.build(client_id, tx_id_offset, &params);
+        tx_id_offset += scenario.transactions.len() as u32;
+        scenarios.push(scenario);
+    }
+
+    let schedule = build_schedule(&scenarios, seed);
+    let csv = interleave(&scenarios, &schedule);
+    let result = runner(&csv);
+    assert_scenarios(&scenarios, &result);
 }
 
 /// Builds a schedule that references each scenario index exactly as many times

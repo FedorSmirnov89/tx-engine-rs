@@ -36,7 +36,7 @@ fn representative_e2e() {
         .output()
         .expect("failed to execute binary");
 
-    assert!(output.status.success(), "...");
+    assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert_eq!(normalize_csv(&stdout), normalize_csv(&expected));
 }

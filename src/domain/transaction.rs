@@ -14,6 +14,18 @@ pub(crate) enum Transaction {
     Chargeback(Chargeback),
 }
 
+impl Transaction {
+    pub(crate) fn client_id(&self) -> ClientId {
+        match self {
+            Transaction::Deposit(d) => d.client_id(),
+            Transaction::Withdrawal(w) => w.client_id(),
+            Transaction::Dispute(d) => d.client_id(),
+            Transaction::Resolve(r) => r.client_id(),
+            Transaction::Chargeback(c) => c.client_id(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Withdrawal {
     client_id: ClientId,

@@ -26,3 +26,69 @@ Reuse the same scenario catalog that powers the correctness tests. Each scenario
 
 4. **Path to production-realistic benchmarks.** In a production setting, real transaction traces would be gathered and distilled into representative scenario shapes — capturing actual client behaviour patterns, type distributions, and error rates. These shapes would slot directly into the existing catalog and flow into benchmarks without any infrastructure changes. The scenario-based approach is designed to grow more realistic over time, rather than being a one-off approximation.
 
+## Sequential vs Parallel: Motivation and Results
+
+### Why a parallel implementation?
+
+The engine exposes two public APIs: `process()` (sequential) and `process_parallel()` (multi-threaded, client-sharded). The parallel variant was built to explore whether distributing transaction processing across worker threads could improve throughput for large batch inputs.
+
+The architecture uses client-sharding: the main thread parses the CSV and dispatches each transaction to a worker thread based on `client_id % num_workers`. All transactions for a given client land on the same worker, preserving per-client ordering without locks on shared state. Two additional threads handle the `on_success` and `on_error` callbacks. All inter-thread communication uses bounded `sync_channel`s for backpressure.
+
+### Benchmark results
+
+The benchmark uses a fixture of ~176,000 transactions generated from the scenario catalog (29 shapes × 2,000 repetitions). Both modes use no-op callbacks to isolate engine throughput from callback cost.
+
+| Mode | Time | Throughput |
+|---|---|---|
+| Sequential | ~180 ms | ~972 Kelem/s |
+| Parallel (7 workers) | ~636 ms | ~277 Kelem/s |
+
+The sequential API is **~3.5× faster**.
+
+### Reproducing the benchmark
+
+1. **Generate the benchmark fixture** (one-time):
+
+```bash
+cargo nextest run --run-ignored only generate_benchmark_fixture
+```
+
+This writes `tests/data/benchmark.csv` (~176K rows).
+
+2. **Run the benchmark:**
+
+```bash
+cargo bench
+```
+
+3. **View the HTML report** (requires a browser):
+
+```
+open target/criterion/process/report/index.html
+```
+
+The Criterion report shows both modes on the same chart for direct comparison, including confidence intervals and change detection across runs.
+
+### Analysis: why parallel is slower
+
+The bottleneck is **CSV parsing**, which is single-threaded in both modes — the `csv` crate's iterator must be consumed sequentially. The actual per-transaction work (a `HashMap` lookup and some `Decimal` arithmetic) costs on the order of nanoseconds.
+
+The parallel implementation adds two `sync_channel` round-trips per transaction:
+1. Main thread → worker (dispatch)
+2. Worker → callback thread (result)
+
+Each channel operation involves a mutex acquisition, potential condvar signal, and cache-line invalidation across cores. At ~1–2 μs per hop, 352,000 channel operations account for the ~450 ms overhead observed.
+
+In other words: **the synchronisation cost of coordinating threads is orders of magnitude larger than the work being distributed**. The workers are essentially idle, waiting on channels, while the main thread spends most of its time parsing CSV rows.
+
+### Conclusion
+
+This result directly mirrors the design principles behind high-frequency trading (HFT) systems, where lock-freedom and minimal cross-thread coordination are treated as non-negotiable constraints. Parallelism only pays when the per-item computation significantly exceeds the coordination cost. For this engine's workload — lightweight in-memory state updates fed by a sequential CSV parser — single-threaded processing is the optimal choice.
+
+### When would the parallel mode be beneficial?
+
+The parallel API (`process_parallel`) would outperform the sequential variant in scenarios where the per-transaction processing cost is substantially higher:
+
+- **Heavy callback work** — if `on_success` or `on_error` perform I/O (e.g., writing to a database, publishing to a message broker), the dedicated callback threads prevent the processing pipeline from stalling.
+- **Complex domain logic** — if transaction processing involved cryptographic verification, model evaluation, or network lookups, the channel overhead would become negligible relative to the per-item cost.
+- **Batched dispatch** — sending chunks of transactions per channel message (instead of one at a time) would amortise synchronisation cost, making the parallel architecture viable even for lighter workloads. This optimisation was not pursued in the current implementation.

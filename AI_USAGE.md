@@ -149,3 +149,21 @@ Smaller interactions (e.g., quick fixes, minor refactors), the use of Agent mode
 - **Mode:** Ask + Agent
 - **Context:** Set up criterion benchmarking for the sequential `process()` API as a throughput baseline before implementing the parallel variant.
 - **Outcome:** AI provided the full criterion setup: `Cargo.toml` changes (criterion dev-dependency, `[[bench]]` section with `harness = false`), and `benches/throughput.rs` benchmarking the `process()` function with the pre-generated benchmark fixture loaded into memory (eliminating file I/O). The benchmark uses `Throughput::Elements` for transactions-per-second reporting, no-op callbacks for pure engine throughput, and a named `BenchmarkId` (`"sequential"`) to enable later side-by-side comparison with the parallel variant. I integrated the code and ran the first baseline measurement.
+
+### 24 — Parallel Orchestration Implementation
+
+- **Mode:** Ask + Agent
+- **Context:** Implemented the parallel processing orchestration layer designed in entry 20. Discussed configuration (worker count, channel capacity), edge cases (`num_workers = 0`), and code organisation.
+- **Outcome:** I implemented `process_transactions_parallel` in a new `src/engine/orchestration.rs` module, decomposed into `spawn_callback_handlers` (two dedicated threads for `on_success`/`on_error` callbacks) and `spawn_worker_threads` (N workers, each owning a `HashMap` partition). All channels use `sync_channel` with bounded capacity for backpressure — AI had initially drafted with unbounded `channel()`, I flagged unbounded channels as a code smell (OOM risk), and we switched to `sync_channel`. AI advised on the `Scope` lifetime annotations required for extracting the spawn helpers. For `num_workers` default, AI suggested `available_parallelism() - 1` (floor of 1) to reserve a core for the main thread, and I added a `tracing::warn` + fallback to 1 for the `num_workers = 0` edge case. AI also added comments explaining why `send()` errors are safe to discard (receiver panics are surfaced via `join()`). The parallel proptest was integrated by extracting the shared scenario-building logic into a `run_scenario_test` helper, avoiding duplication between the sequential and parallel proptest bodies.
+
+### 25 — Benchmark: Sequential vs Parallel Comparison
+
+- **Mode:** Ask + Agent
+- **Context:** Extended the criterion benchmark to run both sequential and parallel modes side-by-side, then analysed the results.
+- **Outcome:** AI provided the updated `benches/throughput.rs` with both modes in the same benchmark group (enabling Criterion's comparison chart). Results on ~176K transactions: sequential ~180 ms (~972 Kelem/s) vs parallel with 7 workers ~636 ms (~277 Kelem/s) — sequential is **~3.5× faster**. AI explained the root cause: CSV parsing is the bottleneck and is single-threaded in both modes; the per-transaction work (HashMap lookup + Decimal arithmetic) is nanosecond-scale, making the ~1–2 μs channel synchronisation cost per hop the dominant overhead (~352K channel operations ≈ ~450 ms). I drew the connection to HFT architecture design principles — lock-freedom and minimal cross-thread coordination — and AI validated and elaborated on the analogy. Also confirmed with AI that switching to Tokio would not help: the workload is CPU-bound with no I/O to await, so an async runtime adds overhead without benefit. Results and analysis documented in `PERFORMANCE.md`; a summary paragraph added to the README Performance section.
+
+### 26 — Future Work
+
+- **Mode:** Ask + Agent
+- **Context:** Expanded the README Future Work section with items surfaced throughout the project.
+- **Outcome:** I proposed WAL/checkpointing/recovery and batched parallel dispatch; AI suggested additional items including `u64` money representation, streaming ingestion, and transaction deduplication. I reviewed and kept five: WAL, batched dispatch, `u64` representation, deduplication, and out-of-order transaction handling (my addition — noting that chronological ordering is unrealistic in distributed settings). Dropped streaming ingestion after AI confirmed the library already supports it via `impl Read` — a `TcpStream` or stdin works today with no code changes. AI applied the final section.

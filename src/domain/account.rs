@@ -18,8 +18,6 @@ pub(crate) struct AccountState {
 impl AccountState {
     #[cfg(test)]
     pub(crate) fn new(available: Money, held: Money, locked: bool) -> Self {
-        use std::collections::HashMap;
-
         Self {
             accepted_deposits: HashMap::new(),
             disputed_deposits: HashMap::new(),
