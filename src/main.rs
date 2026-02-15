@@ -3,7 +3,7 @@ use std::{env, fs::File};
 use tx_engine_rs::{Error, TransactionRecord, process, setup_logging};
 
 fn main() -> Result<()> {
-    setup_logging()?;
+    setup_logging();
 
     let reader = get_reader()?;
     let writer = get_writer();

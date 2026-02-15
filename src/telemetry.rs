@@ -1,12 +1,11 @@
 //! Module for telemetry functionality such as logging
 
-use anyhow::Result;
 use tracing::debug;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Sets up logging. The log level is taken from the `RUST_LOG` env variable (default is `info`).
 /// The logging format (pretty/json) is set by the `LOG_FORMAT` env variable.
-pub fn setup_logging() -> Result<()> {
+pub fn setup_logging() {
     let env_filter =
         tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into());
 
@@ -32,5 +31,4 @@ pub fn setup_logging() -> Result<()> {
             .init();
     }
     debug!("Debug mode is enabled. Sensitive data might be visible.");
-    Ok(())
 }

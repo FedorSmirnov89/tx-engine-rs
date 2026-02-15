@@ -101,3 +101,15 @@ Smaller interactions (e.g., quick fixes, minor refactors), the use of Agent mode
 - **Mode:** Ask + Agent
 - **Context:** Before implementing dispute logic, defined the full set of dispute test cases — both as targeted integration tests (`tests/dispute/mod.rs`) and as scenario shapes for the proptest catalog. Discussed which cases to cover, whether error-only cases belong in the scenario catalog (decided yes — scenarios document behavior and gain value from interleaving), and parameter encoding for each shape.
 - **Outcome:** Six dispute cases implemented as both targeted tests and scenario shapes: happy-path deposit-then-dispute, dispute on a nonexistent tx, dispute on a withdrawal, dispute with insufficient available funds, double dispute on the same tx, and two-deposits-dispute-first (verifying only the targeted deposit is affected). None of the production code was touched — tests are written ahead of implementation, matching the approach used for withdrawals.
+
+### 16 — Resolve Test Cases
+
+- **Mode:** Ask + Agent
+- **Context:** Before implementing resolve logic, defined the full set of resolve test cases — targeted integration tests (`tests/resolve/mod.rs`) and scenario shapes. Discussed edge cases such as resolving a non-existent transaction, resolving an undisputed deposit, double resolve, and re-dispute after resolve.
+- **Outcome:** Eight resolve cases implemented as both targeted tests and scenario shapes: happy-path dispute-then-resolve, resolve on a nonexistent tx, resolve on an undisputed deposit, double resolve, re-dispute after resolve, and multi-deposit scenarios verifying that only the targeted deposit is affected by the resolve. Tests written ahead of implementation.
+
+### 17 — Chargeback Test Cases
+
+- **Mode:** Ask + Agent
+- **Context:** Before implementing chargeback logic, defined the full set of chargeback test cases — targeted integration tests (`tests/chargeback/mod.rs`) and scenario shapes. Discussed edge cases including chargebacks on non-existent transactions, undisputed deposits, double chargebacks, operations on frozen accounts, and chargeback on a different previously-disputed transaction after an account is already frozen.
+- **Outcome:** Nine chargeback cases implemented as both targeted tests and scenario shapes: happy-path dispute-then-chargeback, chargeback on a nonexistent tx, chargeback on an undisputed deposit, double chargeback, deposit/withdrawal/dispute/resolve/chargeback on a frozen account, and chargeback on a different disputed tx after freeze. Tests written ahead of implementation.
