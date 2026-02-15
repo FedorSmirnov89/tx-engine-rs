@@ -5,13 +5,16 @@ use std::io::Read;
 use rust_decimal::Decimal;
 use serde::Deserialize;
 
-use crate::domain::{ClientId, Deposit, Dispute, Resolve, Transaction, TxId, Withdrawal};
+use crate::domain::{
+    Chargeback, ClientId, Deposit, Dispute, Resolve, Transaction, TxId, Withdrawal,
+};
 use crate::error::{Error, validation_error};
 
 pub(crate) const TYPE_KW_DEPOSIT: &str = "deposit";
 pub(crate) const TYPE_KW_WITHDRAWAL: &str = "withdrawal";
 pub(crate) const TYPE_KW_DISPUTE: &str = "dispute";
 pub(crate) const TYPE_KW_RESOLVE: &str = "resolve";
+pub(crate) const TYPE_KW_CHARGEBACK: &str = "chargeback";
 
 #[cfg(test)]
 mod tests;
@@ -102,6 +105,16 @@ impl TryFrom<RawTransaction> for Transaction {
                     ));
                 }
                 Ok(Transaction::Resolve(Resolve::new(client_id, tx_id)))
+            }
+            TYPE_KW_CHARGEBACK => {
+                if amount.is_some() {
+                    return Err(validation_error(
+                        client_id,
+                        tx_id,
+                        "an amount must not be provided with a chargeback transaction",
+                    ));
+                }
+                Ok(Transaction::Chargeback(Chargeback::new(client_id, tx_id)))
             }
             other => Err(validation_error(
                 client,
