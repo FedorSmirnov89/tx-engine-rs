@@ -104,6 +104,38 @@ pub fn run_process(csv_input: &str) -> ProcessResult {
     }
 }
 
+pub fn run_process_parallel(
+    csv_input: &str,
+    n_workers: usize,
+    channel_capacity: usize,
+) -> ProcessResult {
+    let mut successes: HashMap<u16, Vec<u32>> = HashMap::new();
+    let mut errors: HashMap<u16, Vec<u32>> = HashMap::new();
+
+    let accounts: HashMap<u16, AccountRecord> = tx_engine_rs::process_parallel(
+        csv_input.as_bytes(),
+        |e| {
+            if let Some((client_id, tx_id)) = error_fields(&e) {
+                errors.entry(client_id).or_default().push(tx_id);
+            }
+        },
+        |tx| {
+            let (client, tx_id) = tx_record_fields(&tx);
+            successes.entry(client).or_default().push(tx_id);
+        },
+        n_workers,
+        channel_capacity,
+    )
+    .map(|a| (a.client, a))
+    .collect();
+
+    ProcessResult {
+        accounts,
+        successes,
+        errors,
+    }
+}
+
 /// Asserts that each scenario's expectations match the process result.
 pub fn assert_scenarios(scenarios: &[Scenario], result: &ProcessResult) {
     for scenario in scenarios {

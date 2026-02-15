@@ -58,3 +58,35 @@ pub fn process(
     let accounts = engine::process_transactions(results, on_error, on_success);
     output::to_account_records(accounts)
 }
+
+/// Parallel variant — client-sharded, multi-threaded processing.
+///
+/// Designed for standalone batch processing of large inputs where
+/// the engine itself must shard and parallelise. For pre-sharded streams
+/// (e.g., in a distributed deployment), prefer [`process()`] which avoids
+/// threading overhead entirely.
+pub fn process_parallel(
+    reader: impl std::io::Read,
+    on_error: impl FnMut(Error) + Send,
+    on_success: impl FnMut(TransactionRecord) + Send,
+    num_workers: usize,
+    channel_capacity: usize,
+) -> impl Iterator<Item = AccountRecord> {
+    let num_workers = if num_workers == 0 {
+        tracing::warn!("num_workers set to 0, defaulting to 1");
+        1
+    } else {
+        num_workers
+    };
+
+    let num_workers = num_workers.max(1);
+    let results = parse_transactions(reader);
+    let accounts = engine::process_transactions_parallel(
+        results,
+        on_error,
+        on_success,
+        num_workers,
+        channel_capacity,
+    );
+    output::to_account_records(accounts)
+}
