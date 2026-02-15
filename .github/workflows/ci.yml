@@ -1,6 +1,9 @@
 name: CI
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
@@ -10,58 +13,32 @@ jobs:
     name: Checks, build, and run tests
     runs-on: ubuntu-latest
 
-
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Cache cargo directories
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cargo/bin
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Install Rust (using our toolchain file)
+      - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.92
           components: rustfmt, llvm-tools-preview
 
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny, cargo-nextest, cargo-llvm-cov
+
       - name: Run rustfmt 
         run: cargo fmt --all --check
-
-      - name: Install cargo-deny (if missing)
-        run: |
-          if ! command -v cargo-deny >/dev/null 2>&1; then
-            cargo install --locked cargo-deny
-          fi
 
       - name: Cargo deny check
         run: cargo deny check advisories
 
-      - name: Install cargo-nextest (if missing)
-        run: |
-          if ! command -v cargo-nextest >/dev/null 2>&1; then
-            cargo install --locked cargo-nextest
-          fi
-
-
       - name: Run tests
         run: cargo nextest run
 
-      - name: Install cargo-llvm-cov (if missing)
-        run: |
-          if ! command -v cargo-llvm-cov >/dev/null 2>&1; then
-            cargo install --locked cargo-llvm-cov
-          fi
-
       - name: Run coverage and enforce threshold
         run: cargo llvm-cov nextest --fail-under-lines 90
-
-      
