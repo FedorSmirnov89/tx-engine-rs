@@ -88,6 +88,20 @@ This offers maximal flexibility and keeps the library agnostic about side effect
 
 Deposits must be stored for dispute resolution, but the only field consumed by a dispute (and later resolve/chargeback) is the amount — the client ID is already the outer map key and the transaction ID is the inner map key. Storing the full `Deposit` struct would duplicate both. The transaction log therefore stores only the `Money` amount per entry, minimising per-transaction memory overhead. If future features (e.g., timestamps, dispute windows) require additional metadata, the value type can be promoted to a dedicated struct without changing the `AccountState` API — the storage is fully encapsulated behind its methods.
 
+### Two public APIs: sequential and parallel
+
+The library exposes two entry points: `process()` (sequential, single-threaded) and `process_parallel()` (multi-threaded with client-sharding). Both share the same domain logic — the only difference is the orchestration layer.
+
+The sequential API exists for a reason beyond simplicity: in a **distributed deployment**, a message broker (e.g., Kafka) already partitions the transaction stream by client ID across consumer groups. Each engine instance receives a pre-sharded, ordered stream for its partition — spawning internal worker threads on top of external sharding would add channel and synchronisation overhead for zero benefit. `process()` serves this use case with no threading cost and a lazy `impl Iterator` return type.
+
+`process_parallel()` is designed for **standalone batch processing** without external sharding infrastructure, where the engine itself must shard and parallelise. It requires `Send`-bound callbacks (each callback is moved to a dedicated thread).
+
+| | `process()` | `process_parallel()` |
+|---|---|---|
+| Use case | Distributed (pre-sharded), small inputs | Standalone batch, large files |
+| Threading | None | N workers + 2 callback threads |
+| Callback bounds | `FnMut` | `FnMut + Send` |
+
 ### No timestamps on transactions or accounts
 
 Timestamps were considered for transactions (for auditing and enabling dispute-window-based eviction) and for accounts (`last_updated`). Both were deferred: the input format provides no event time, so timestamps would reflect processing time only — which is near-identical across a batch run and carries little information. Account-level `last_updated` adds a write on every operation for a field not consumed by the output. In a streaming or real-time system, event-time timestamps become valuable and can be added without changing the processing logic.
@@ -161,6 +175,10 @@ Every pull request against `main` runs a GitHub Actions pipeline that enforces:
 - **Coverage** — `cargo llvm-cov nextest --fail-under-lines 90` enforces a minimum of 90 % line coverage.
 
 The pipeline definition lives in `.github/workflows/ci.yml`.
+
+## Performance
+
+The thoughts and work on optimising the engine's performance — including benchmark methodology, the rationale behind the benchmark input generation strategy, and measurement results — are detailed in [PERFORMANCE.md](./PERFORMANCE.md).
 
 ## Future Work
 

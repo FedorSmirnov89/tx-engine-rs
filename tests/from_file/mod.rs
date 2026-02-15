@@ -25,6 +25,22 @@ fn two_deposits() {
     assert_eq!(normalize_csv(&stdout), normalize_csv(&expected));
 }
 
+#[test]
+fn representative_e2e() {
+    let input_path = fixture_path("representative.csv");
+    let expected = std::fs::read_to_string(fixture_path("representative_expected.csv"))
+        .expect("failed to read expected output fixture");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_tx-engine-rs"))
+        .arg(&input_path)
+        .output()
+        .expect("failed to execute binary");
+
+    assert!(output.status.success(), "...");
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(normalize_csv(&stdout), normalize_csv(&expected));
+}
+
 /// Returns the absolute path to a test fixture file in `tests/data/`.
 fn fixture_path(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -41,6 +57,12 @@ fn normalize_csv(raw: &str) -> String {
         .map(|line| {
             line.split(',')
                 .map(|cell| cell.trim())
+                .map(|cell| {
+                    // Normalize decimal representations: "0.0000" → "0"
+                    cell.parse::<rust_decimal::Decimal>()
+                        .map(|d| d.normalize().to_string())
+                        .unwrap_or_else(|_| cell.to_string())
+                })
                 .collect::<Vec<_>>()
                 .join(",")
         })

@@ -113,3 +113,39 @@ Smaller interactions (e.g., quick fixes, minor refactors), the use of Agent mode
 - **Mode:** Ask + Agent
 - **Context:** Before implementing chargeback logic, defined the full set of chargeback test cases — targeted integration tests (`tests/chargeback/mod.rs`) and scenario shapes. Discussed edge cases including chargebacks on non-existent transactions, undisputed deposits, double chargebacks, operations on frozen accounts, and chargeback on a different previously-disputed transaction after an account is already frozen.
 - **Outcome:** Nine chargeback cases implemented as both targeted tests and scenario shapes: happy-path dispute-then-chargeback, chargeback on a nonexistent tx, chargeback on an undisputed deposit, double chargeback, deposit/withdrawal/dispute/resolve/chargeback on a frozen account, and chargeback on a different disputed tx after freeze. Tests written ahead of implementation.
+
+### 18 — Observability Discussion
+
+- **Mode:** Ask
+- **Context:** Discussed whether to add `tracing` calls inside the library for important events such as account freezes or transaction processing.
+- **Outcome:** AI argued that the existing callback design (`on_success`, `on_error`) already provides the observability hooks and that adding `tracing` calls inside the engine would create two parallel observability channels — muddying the clean "library has no side effects" design. If richer context were needed (e.g., "account frozen"), the cleaner path would be enriching `TransactionRecord` rather than adding library-internal logs. I agreed; no changes made.
+
+### 19 — Performance Optimization Strategy
+
+- **Mode:** Ask
+- **Context:** I proposed a 5-step plan for performance work: (1) generate large test input, (2) set up criterion benchmarking, (3) implement two parallel alternatives — rayon with DashMap and client-sharding with explicit thread assignment, (4) benchmark and document results, (5) final polish.
+- **Outcome:** AI analysed both parallel approaches and pointed out that the per-client ordering constraint means both reduce to the same fundamental pattern: parse all transactions, group/route by client, process each client's group in parallel. With client-sharding, each worker owns its partition exclusively — `DashMap` and rayon add nothing. AI also noted that the bottleneck is likely CSV parsing (sequential, `csv` crate), not processing (O(1) HashMap lookups per transaction), so parallelising the processing yields modest gains — but this is itself a valuable benchmark finding to document. I agreed to drop rayon entirely and keep a single client-sharded parallel implementation.
+
+### 20 — Parallel Processing Architecture
+
+- **Mode:** Ask
+- **Context:** Designed the streaming parallel architecture in detail. I proposed that the main thread parses CSV rows one by one and routes each transaction to `worker[client_id % N]` via channels — each worker owns a `HashMap<ClientId, AccountState>` partition exclusively, making the design fully lock-free while preserving per-client ordering and staying streaming (no buffering of the full transaction set).
+- **Outcome:** AI raised a practical challenge: the `on_error` / `on_success` callbacks are `FnMut` (not `Send`), so they cannot be shipped to worker threads directly. `Send` alone is insufficient because one `FnMut` can't be moved to N threads (would need `Clone`). AI proposed having workers send `Result<TransactionRecord, Error>` back to the main thread, which keeps callbacks single-threaded with no API change. I countered with a concern: if a caller supplies a slow or blocking callback, it would stall the parse loop and starve workers. I proposed a middle ground — two dedicated callback threads, one for `on_success` and one for `on_error`. Each callback moves to exactly one thread, requiring only `+ Send` (no `Clone`, no `Arc<Mutex<…>>`). Using `std::thread::scope`, no `'static` bound is needed either. AI validated the design. Settled on: main thread (parse + dispatch) → N worker threads (lock-free processing) → 2 callback threads (isolated from parse loop). The public API change is minimal: just `+ Send` on the callback bounds.
+
+### 21 — Test Fixture Generation Strategy
+
+- **Mode:** Ask + Agent
+- **Context:** Discussed how to generate large, representative test input for (a) an E2E regression test verifying the full binary pipeline from file to output, and (b) a criterion benchmark measuring throughput.
+- **Outcome:** AI proposed reusing the scenario catalog with deterministic parameters and a fixed interleaving seed, implemented as `#[ignore]` tests in a `tests/generate/` module. I agreed and implemented the E2E generator (`build_catalog_scenarios(4)` → 116 clients, ~450 rows). During integration, a decimal formatting mismatch was discovered (`0.0000` vs `0` due to `rust_decimal` preserving arithmetic scale) — AI suggested normalising decimals via `Decimal::normalize()` in the CSV comparator, which resolved it. For the benchmark fixture, AI initially proposed a simpler deposit/withdrawal-only generator; I questioned this, and we agreed that including all transaction types via the same scenario catalog is more representative. I made the broader point that in production we would gather real traces and distil them into scenario shapes — making the scenario-based generator the right abstraction for increasingly realistic benchmarks as the catalog matures. Landed on: both fixtures use `build_catalog_scenarios` (4 reps for E2E, 2000 reps for benchmarks ≈ 200K rows), with shared helpers extracted to the generate module root.
+
+### 22 — Sequential vs Parallel API Strategy
+
+- **Mode:** Ask
+- **Context:** Discussed whether to maintain both a sequential and a parallel `process` API, or to replace the sequential one entirely once the parallel implementation is done. I initially leaned toward replacing (branch-and-evolve), noting that maintaining two orchestration paths adds complexity.
+- **Outcome:** AI pointed out that the domain logic (`handle_*` functions, `AccountState`) is shared — only the orchestration layer differs, making the maintenance cost low. I then proposed a concrete architectural justification for keeping both: in a distributed deployment, external infrastructure (e.g., a message broker) already partitions the transaction stream by client ID — each engine instance receives a pre-sharded, ordered stream, making internal threading pure overhead. AI validated the argument and elaborated on the details (Kafka consumer groups, channel/synchronisation cost). Decided to keep both: `process()` (sequential, lazy, no threading, no `Send` bounds) for the distributed/pre-sharded use case, and `process_parallel()` (client-sharding, `Send`-bound callbacks) for standalone batch processing. The architectural distinction was documented in the README under Design Decisions.
+
+### 23 — Criterion Benchmark Setup
+
+- **Mode:** Ask + Agent
+- **Context:** Set up criterion benchmarking for the sequential `process()` API as a throughput baseline before implementing the parallel variant.
+- **Outcome:** AI provided the full criterion setup: `Cargo.toml` changes (criterion dev-dependency, `[[bench]]` section with `harness = false`), and `benches/throughput.rs` benchmarking the `process()` function with the pre-generated benchmark fixture loaded into memory (eliminating file I/O). The benchmark uses `Throughput::Elements` for transactions-per-second reporting, no-op callbacks for pure engine throughput, and a named `BenchmarkId` (`"sequential"`) to enable later side-by-side comparison with the parallel variant. I integrated the code and ran the first baseline measurement.

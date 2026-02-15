@@ -4,9 +4,11 @@ mod chargeback;
 mod deposit;
 mod dispute;
 mod from_file;
+mod generate;
 mod resolve;
-mod scenarios;
 mod withdrawal;
+
+pub(crate) mod scenarios;
 
 use tx_engine_rs::{AccountRecord, Error, TransactionRecord, process};
 
