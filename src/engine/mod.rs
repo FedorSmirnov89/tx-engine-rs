@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::{
     Error,
-    domain::{AccountState, ClientId, Deposit, Dispute, Transaction, Withdrawal},
+    domain::{AccountState, ClientId, Deposit, Dispute, Resolve, Transaction, Withdrawal},
     error::processing_error,
     output::TransactionRecord,
 };
@@ -47,6 +47,7 @@ fn handle_transaction(tx: &Transaction, accounts: &mut Accounts) -> Result<(), E
         }
         Transaction::Withdrawal(withdrawal) => handle_withdrawal(withdrawal, accounts),
         Transaction::Dispute(dispute) => handle_dispute(dispute, accounts),
+        Transaction::Resolve(resolve) => handle_resolve(resolve, accounts),
     }
 }
 
@@ -87,4 +88,21 @@ fn handle_dispute(dispute: &Dispute, accounts: &mut Accounts) -> Result<(), Erro
     account
         .dispute(disputed_tx)
         .map_err(|msg| processing_error(client_id, disputed_tx, msg))
+}
+
+fn handle_resolve(resolve: &Resolve, accounts: &mut Accounts) -> Result<(), Error> {
+    let client_id = resolve.client_id();
+    let resolved_tx = resolve.resolved_tx_id();
+
+    let Some(account) = accounts.get_mut(&client_id) else {
+        return Err(processing_error(
+            client_id,
+            resolved_tx,
+            "resolve from a client without account",
+        ));
+    };
+
+    account
+        .resolve(resolved_tx)
+        .map_err(|msg| processing_error(client_id, resolved_tx, msg))
 }

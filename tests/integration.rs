@@ -3,6 +3,7 @@
 mod deposit;
 mod dispute;
 mod from_file;
+mod resolve;
 mod scenarios;
 mod withdrawal;
 

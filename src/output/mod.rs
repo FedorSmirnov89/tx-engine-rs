@@ -44,6 +44,7 @@ pub enum TransactionRecord {
     Deposit { client: u16, tx: u32, amount: Money },
     Withdrawal { client: u16, tx: u32, amount: Money },
     Dispute { client: u16, tx: u32 },
+    Resolve { client: u16, tx: u32 },
 }
 
 impl TransactionRecord {
@@ -62,6 +63,10 @@ impl TransactionRecord {
             Transaction::Dispute(d) => TransactionRecord::Dispute {
                 client: d.client_id().into(),
                 tx: d.disputed_tx_id().into(),
+            },
+            Transaction::Resolve(r) => TransactionRecord::Resolve {
+                client: r.client_id().into(),
+                tx: r.resolved_tx_id().into(),
             },
         }
     }
@@ -84,6 +89,9 @@ impl fmt::Display for TransactionRecord {
             }
             TransactionRecord::Dispute { client, tx } => {
                 write!(f, "Dispute {{ client: {client}, tx: {tx} }}")
+            }
+            TransactionRecord::Resolve { client, tx } => {
+                write!(f, "Resolve {{ client: {client}, tx: {tx} }}")
             }
         }
     }

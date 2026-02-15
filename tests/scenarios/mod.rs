@@ -14,9 +14,9 @@ proptest! {
     fn interleaved_scenarios_produce_correct_results(
         // Bump the upper bound of the first tuple element when the catalog grows beyond 8 shapes.
         // Increase the range of the second tuple element to test more clients simultaneously.
-        shape_indices in prop::collection::vec(0usize..8, 2..=6),
-        // Increase the pool size of the second tuple element if shapes need many random parameters or max scenarios grows.
-        random_parameters in prop::collection::vec(1u64..100_000, 20),
+        shape_indices in prop::collection::vec(0usize..19, 2..=6),
+        // Increase the pool size if shapes need many random parameters or max scenarios grows.
+        random_parameters in prop::collection::vec(1u64..100_000, 50),
         seed in any::<u64>(),
     ) {
         let catalog = catalog::all_shapes();

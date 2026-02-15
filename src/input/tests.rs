@@ -54,7 +54,14 @@ fn empty_file_yields_no_transactions() {
 #[rstest]
 fn parse_transaction_row(
     // client ID and tx ID not varied since all combinations are valid
-    #[values(TYPE_KW_DEPOSIT, TYPE_KW_WITHDRAWAL, TYPE_KW_DISPUTE, "invalid")] tx_type: &str,
+    #[values(
+        TYPE_KW_DEPOSIT,
+        TYPE_KW_WITHDRAWAL,
+        TYPE_KW_DISPUTE,
+        TYPE_KW_RESOLVE,
+        "invalid"
+    )]
+    tx_type: &str,
     #[values("1.0", "0.0", "999999.9999", "-1.0", "-0.0001", "")] amount: &str,
 ) {
     // Arrange
@@ -81,6 +88,9 @@ fn parse_transaction_row(
             TYPE_KW_DISPUTE => {
                 assert_matches!(tx, Transaction::Dispute(d) if d == Dispute::new(ClientId::new(client_id), TxId::new(tx_id)))
             }
+            TYPE_KW_RESOLVE => {
+                assert_matches!(tx, Transaction::Resolve(r) if r == Resolve::new(ClientId::new(client_id), TxId::new(tx_id)))
+            }
             _ => unreachable!("invalid type"),
         }
     } else {
@@ -93,7 +103,7 @@ fn specified_tx_is_valid(tx_type: &str, amount: &str) -> bool {
         TYPE_KW_DEPOSIT | TYPE_KW_WITHDRAWAL => {
             !amount.is_empty() && amount.parse::<Decimal>().unwrap() > Decimal::ZERO
         }
-        TYPE_KW_DISPUTE => amount.is_empty(),
+        TYPE_KW_DISPUTE | TYPE_KW_RESOLVE => amount.is_empty(),
         _ => false,
     }
 }

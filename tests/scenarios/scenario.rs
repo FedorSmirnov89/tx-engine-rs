@@ -148,6 +148,7 @@ fn tx_record_fields(tx: &TransactionRecord) -> (u16, u32) {
         TransactionRecord::Deposit { client, tx, .. } => (*client, *tx),
         TransactionRecord::Withdrawal { client, tx, .. } => (*client, *tx),
         TransactionRecord::Dispute { client, tx } => (*client, *tx),
+        TransactionRecord::Resolve { client, tx } => (*client, *tx),
     }
 }
 
