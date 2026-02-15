@@ -162,6 +162,10 @@ Every pull request against `main` runs a GitHub Actions pipeline that enforces:
 
 The pipeline definition lives in `.github/workflows/ci.yml`.
 
+## Performance
+
+The thoughts and work on optimising the engine's performance — including benchmark methodology, the rationale behind the benchmark input generation strategy, and measurement results — are detailed in [PERFORMANCE.md](./PERFORMANCE.md).
+
 ## Future Work
 
 - **Transaction timestamps & dispute windows:** In a streaming system, transactions could carry event-time timestamps, enabling eviction of old transactions that are past their dispute window — reducing memory usage in long-running deployments.
