@@ -40,9 +40,9 @@ resolve,1,3,
 **Output format:**
 
 ```csv
-client,available,held,total
-1,1.5,0,1.5
-2,2,0,2
+client,available,held,total,locked
+1,1.5,0,1.5,false
+2,2.0,0,2.0,false
 ```
 
 ## Assumptions
@@ -178,12 +178,23 @@ The pipeline definition lives in `.github/workflows/ci.yml`.
 
 ## Performance
 
-The thoughts and work on optimising the engine's performance — including benchmark methodology, the rationale behind the benchmark input generation strategy, and measurement results — are detailed in [PERFORMANCE.md](./PERFORMANCE.md).
+Benchmarks show that the **sequential `process()` API is ~3.5× faster** than the parallel variant for the chosen workload (~176K transactions in ~180 ms vs ~636 ms). The per-transaction work — a HashMap lookup and decimal arithmetic — is so lightweight that channel synchronisation overhead dominates any parallelism benefit. The binary therefore uses single-threaded processing by default.
+
+Full methodology, reproduction instructions, and analysis are in [PERFORMANCE.md](./PERFORMANCE.md).
 
 ## Future Work
 
+- **Write-ahead log, checkpointing & recovery:** Persist transactions to a WAL before processing, with periodic snapshots of account state. On crash, replay the WAL from the last checkpoint to restore consistent state without reprocessing the full input.
+
 - **Transaction timestamps & dispute windows:** In a streaming system, transactions could carry event-time timestamps, enabling eviction of old transactions that are past their dispute window — reducing memory usage in long-running deployments.
 
+- **Batched parallel dispatch:** The current parallel implementation sends one transaction per channel message. Batching multiple transactions into a single message would amortise synchronisation cost and could make the parallel mode competitive with sequential processing (see [PERFORMANCE.md](./PERFORMANCE.md)).
+
+- **`u64` money representation:** Replace `rust_decimal::Decimal` with fixed-point `u64` arithmetic (e.g., storing ten-thousandths of a unit). This would reduce per-value memory, eliminate heap allocation during parsing, and improve cache locality — at the cost of slightly more verbose formatting and the need for overflow checks.
+
+- **Transaction deduplication:** Reject transactions that reuse an existing transaction ID, providing idempotency guarantees for at-least-once delivery systems.
+
+- **Out-of-order transaction handling:** The engine currently assumes that transactions arrive in chronological order — a simplification that is unlikely to hold in distributed or high-throughput environments. Supporting out-of-order delivery would require buffering, sequencing (e.g., via event-time timestamps or sequence numbers), and potentially reworking the dispute/resolve/chargeback state machine to handle "future" references gracefully. This would be a substantial change to the processing model.
 
 ---
 **AI Usage Declaration:** This project utilized generative AI tools (Cursor) for architectural brainstorming and boilerplate generation. All code and logic were reviewed, tested, and validated by the author to ensure correctness and security. For a detailed log, see [AI_USAGE.md](./AI_USAGE.md).

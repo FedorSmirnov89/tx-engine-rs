@@ -1,4 +1,4 @@
-//! Module for the script determinisitcally generating a large input used for an e2e test
+//! Module for the script deterministically generating a large input used for an e2e test
 
 use crate::{
     generate::{build_catalog_scenarios, data_dir, write_expected_csv, write_text},

@@ -79,7 +79,6 @@ pub fn process_parallel(
         num_workers
     };
 
-    let num_workers = num_workers.max(1);
     let results = parse_transactions(reader);
     let accounts = engine::process_transactions_parallel(
         results,
