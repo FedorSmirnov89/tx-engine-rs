@@ -1,6 +1,7 @@
 //! Integration tests for the transaction engine.
 
 mod deposit;
+mod dispute;
 mod from_file;
 mod scenarios;
 mod withdrawal;

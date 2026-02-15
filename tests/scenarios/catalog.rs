@@ -305,6 +305,223 @@ impl ScenarioShape for ExactBalanceWithdrawal {
     }
 }
 
+/// Deposit then dispute the deposit. Funds move from available to held.
+/// params: [0] = deposit amount
+pub struct DepositThenDispute;
+
+impl ScenarioShape for DepositThenDispute {
+    fn num_random_parameters(&self) -> usize {
+        1
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let amount = random_parameters[0];
+        let tx_dep = tx_id_offset + 1;
+
+        Scenario {
+            name: "DepositThenDispute",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx_dep}, {amount}"),
+                format!("dispute, {client_id}, {tx_dep},"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: Decimal::ZERO,
+                held: amount,
+                total: amount,
+                locked: false,
+            },
+            expected_successes: vec![tx_dep, tx_dep],
+            expected_errors: vec![],
+        }
+    }
+}
+
+/// Deposit then dispute a nonexistent tx. The dispute fails, balance unchanged.
+/// params: [0] = deposit amount
+pub struct DisputeNonexistentTx;
+
+impl ScenarioShape for DisputeNonexistentTx {
+    fn num_random_parameters(&self) -> usize {
+        1
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let amount = random_parameters[0];
+        let tx_dep = tx_id_offset + 1;
+        let tx_fake = tx_id_offset + 2;
+
+        Scenario {
+            name: "DisputeNonexistentTx",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx_dep}, {amount}"),
+                format!("dispute, {client_id}, {tx_fake},"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: amount,
+                held: Decimal::ZERO,
+                total: amount,
+                locked: false,
+            },
+            expected_successes: vec![tx_dep],
+            expected_errors: vec![tx_fake],
+        }
+    }
+}
+
+/// Deposit, withdraw, then dispute the withdrawal. The dispute fails — only deposits are disputable.
+/// params: [0] = remaining after withdrawal, [1] = withdrawal amount
+/// deposit = [0] + [1], withdrawal = [1]
+pub struct DisputeAWithdrawal;
+
+impl ScenarioShape for DisputeAWithdrawal {
+    fn num_random_parameters(&self) -> usize {
+        2
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let withdrawal = random_parameters[1];
+        let deposit = random_parameters[0] + withdrawal;
+        let remaining = deposit - withdrawal;
+
+        let tx_dep = tx_id_offset + 1;
+        let tx_wdr = tx_id_offset + 2;
+
+        Scenario {
+            name: "DisputeAWithdrawal",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx_dep}, {deposit}"),
+                format!("withdrawal, {client_id}, {tx_wdr}, {withdrawal}"),
+                format!("dispute, {client_id}, {tx_wdr},"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: remaining,
+                held: Decimal::ZERO,
+                total: remaining,
+                locked: false,
+            },
+            expected_successes: vec![tx_dep, tx_wdr],
+            expected_errors: vec![tx_wdr],
+        }
+    }
+}
+
+/// Deposit, withdraw part of it, then dispute the deposit. The dispute fails because
+/// available < disputed amount (funds have been partially spent).
+/// params: [0] = remaining available after withdrawal, [1] = withdrawal amount
+/// deposit = [0] + [1]
+pub struct DisputeInsufficientFunds;
+
+impl ScenarioShape for DisputeInsufficientFunds {
+    fn num_random_parameters(&self) -> usize {
+        2
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let remaining = random_parameters[0];
+        let withdrawal = random_parameters[1];
+        let deposit = remaining + withdrawal;
+
+        let tx_dep = tx_id_offset + 1;
+        let tx_wdr = tx_id_offset + 2;
+
+        Scenario {
+            name: "DisputeInsufficientFunds",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx_dep}, {deposit}"),
+                format!("withdrawal, {client_id}, {tx_wdr}, {withdrawal}"),
+                format!("dispute, {client_id}, {tx_dep},"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: remaining,
+                held: Decimal::ZERO,
+                total: remaining,
+                locked: false,
+            },
+            expected_successes: vec![tx_dep, tx_wdr],
+            expected_errors: vec![tx_dep],
+        }
+    }
+}
+
+/// Deposit then dispute the same tx twice. The second dispute fails — already under dispute.
+/// params: [0] = deposit amount
+pub struct DoubleDispute;
+
+impl ScenarioShape for DoubleDispute {
+    fn num_random_parameters(&self) -> usize {
+        1
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let amount = random_parameters[0];
+        let tx_dep = tx_id_offset + 1;
+
+        Scenario {
+            name: "DoubleDispute",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx_dep}, {amount}"),
+                format!("dispute, {client_id}, {tx_dep},"),
+                format!("dispute, {client_id}, {tx_dep},"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: Decimal::ZERO,
+                held: amount,
+                total: amount,
+                locked: false,
+            },
+            expected_successes: vec![tx_dep, tx_dep],
+            expected_errors: vec![tx_dep],
+        }
+    }
+}
+
+/// Two deposits, then dispute only the first. Only the first deposit's funds are held.
+/// params: [0] = first deposit, [1] = second deposit
+pub struct TwoDepositsDisputeFirst;
+
+impl ScenarioShape for TwoDepositsDisputeFirst {
+    fn num_random_parameters(&self) -> usize {
+        2
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let first = random_parameters[0];
+        let second = random_parameters[1];
+
+        let tx_dep_1 = tx_id_offset + 1;
+        let tx_dep_2 = tx_id_offset + 2;
+
+        Scenario {
+            name: "TwoDepositsDisputeFirst",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx_dep_1}, {first}"),
+                format!("deposit, {client_id}, {tx_dep_2}, {second}"),
+                format!("dispute, {client_id}, {tx_dep_1},"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: second,
+                held: first,
+                total: first + second,
+                locked: false,
+            },
+            expected_successes: vec![tx_dep_1, tx_dep_2, tx_dep_1],
+            expected_errors: vec![],
+        }
+    }
+}
+
 /// Returns all available scenario shapes.
 pub fn all_shapes() -> Vec<Box<dyn ScenarioShape>> {
     vec![
@@ -316,6 +533,12 @@ pub fn all_shapes() -> Vec<Box<dyn ScenarioShape>> {
         Box::new(OverdraftThenDepositThenWithdraw),
         Box::new(DepositThenOverdraft),
         Box::new(ExactBalanceWithdrawal),
+        Box::new(DepositThenDispute),
+        Box::new(DisputeNonexistentTx),
+        Box::new(DisputeAWithdrawal),
+        Box::new(DisputeInsufficientFunds),
+        Box::new(DoubleDispute),
+        Box::new(TwoDepositsDisputeFirst),
         // ... add more as transaction types are implemented
     ]
 }

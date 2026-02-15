@@ -5,11 +5,12 @@ use std::io::Read;
 use rust_decimal::Decimal;
 use serde::Deserialize;
 
-use crate::domain::{ClientId, Deposit, Transaction, TxId, Withdrawal};
+use crate::domain::{ClientId, Deposit, Dispute, Transaction, TxId, Withdrawal};
 use crate::error::{Error, validation_error};
 
 pub(crate) const TYPE_KW_DEPOSIT: &str = "deposit";
 pub(crate) const TYPE_KW_WITHDRAWAL: &str = "withdrawal";
+pub(crate) const TYPE_KW_DISPUTE: &str = "dispute";
 
 #[cfg(test)]
 mod tests;
@@ -81,6 +82,17 @@ impl TryFrom<RawTransaction> for Transaction {
                         .map_err(|msg| validation_error(client, tx, msg))?,
                 ))
             }
+            TYPE_KW_DISPUTE => {
+                if amount.is_some() {
+                    return Err(validation_error(
+                        client_id,
+                        tx_id,
+                        "an amount must not be provided with a dispute transaction",
+                    ));
+                }
+                Ok(Transaction::Dispute(Dispute::new(client_id, tx_id)))
+            }
+
             other => Err(validation_error(
                 client,
                 tx,

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::{
     Error,
-    domain::{AccountState, ClientId, Deposit, Transaction, Withdrawal},
+    domain::{AccountState, ClientId, Deposit, Dispute, Transaction, Withdrawal},
     error::processing_error,
     output::TransactionRecord,
 };
@@ -46,12 +46,13 @@ fn handle_transaction(tx: &Transaction, accounts: &mut Accounts) -> Result<(), E
             Ok(())
         }
         Transaction::Withdrawal(withdrawal) => handle_withdrawal(withdrawal, accounts),
+        Transaction::Dispute(dispute) => handle_dispute(dispute, accounts),
     }
 }
 
 fn handle_deposit(deposit: &Deposit, accounts: &mut Accounts) {
     let account = accounts.entry(deposit.client_id()).or_default();
-    account.deposit(deposit.amount());
+    account.deposit(*deposit);
 }
 
 fn handle_withdrawal(withdrawal: &Withdrawal, accounts: &mut Accounts) -> Result<(), Error> {
@@ -69,4 +70,21 @@ fn handle_withdrawal(withdrawal: &Withdrawal, accounts: &mut Accounts) -> Result
     account
         .withdraw(withdrawal.amount())
         .map_err(|msg| processing_error(client_id, tx_id, msg))
+}
+
+fn handle_dispute(dispute: &Dispute, accounts: &mut Accounts) -> Result<(), Error> {
+    let client_id = dispute.client_id();
+    let disputed_tx = dispute.disputed_tx_id();
+
+    let Some(account) = accounts.get_mut(&client_id) else {
+        return Err(processing_error(
+            client_id,
+            disputed_tx,
+            "dispute from a client without account",
+        ));
+    };
+
+    account
+        .dispute(disputed_tx)
+        .map_err(|msg| processing_error(client_id, disputed_tx, msg))
 }

@@ -52,7 +52,7 @@ Smaller interactions (e.g., quick fixes, minor refactors), the use of Agent mode
 
 - **Mode:** Ask + Agent
 - **Context:** Designed the output layer for converting domain types to serializable output. Discussed the split between lib and main, return type (Vec vs iterator), and whether to sort output.
-- **Outcome:** The lib output module converts `HashMap<ClientId, AccountState>` into an iterator of a `Serialize`-able DTO (`AccountRecord`), keeping the lib format-agnostic — `main` picks the serialization format. No sorting in production code since the spec doesn't require it and the integration tests already normalize order. Generated a draft for the output unit tests.
+- **Outcome:** The lib output module converts `HashMap<ClientId, AccountState>` into an iterator of a `Serialize`-able DTO (`AccountRecord`), keeping the lib format-agnostic — `main` picks the serialization format. No sorting in production code since row ordering is not required and the integration tests already normalize order. Generated a draft for the output unit tests.
 
 ### 8 — Error Type Design with `thiserror`
 
@@ -89,3 +89,15 @@ Smaller interactions (e.g., quick fixes, minor refactors), the use of Agent mode
 - **Mode:** Ask + Agent
 - **Context:** Before starting on the core logic, reviewed existing test coverage to identify gaps. Identified five potential areas: empty input, exact-balance withdrawal boundary, invalid withdrawal amounts (zero/negative), multi-client isolation in targeted tests, and withdrawal on a never-seen client.
 - **Outcome:** Added three items based on my prioritisation: an empty-input edge-case test in the integration root, an `ExactBalanceWithdrawal` scenario shape in the catalog (deposit X, withdraw X, balance = 0), and two targeted tests for zero- and negative-amount withdrawals. Multi-client isolation was already covered by the scenario interleaving; the never-seen-client case was deemed unnecessary given existing overdraft coverage.
+
+### 14 — Dispute, Resolve & Chargeback Semantics
+
+- **Mode:** Ask
+- **Context:** Discussed the intended behavior of the three remaining transaction types (dispute, resolve, chargeback) based on their intended behavior. With a general description of a dispute, several edge cases are ambiguous — particularly whether withdrawals can be disputed, what happens when disputed funds have already been spent, and what a frozen account means for subsequent transactions. Worked through each case by reasoning from real-world financial semantics and consistency with the existing engine rules.
+- **Outcome:** Established and documented seven assumptions in the README: only deposits can be disputed (withdrawals are between the client and the destination); a dispute is rejected when `available` is insufficient (consistent with the no-negative-balance rule for withdrawals); a frozen account rejects all subsequent transactions (safest default given the ambiguity); one active dispute per transaction; resolved transactions may be re-disputed; and zero-amount withdrawals are rejected. The "chargebacks are terminal" point was initially drafted but removed as redundant — it is already implied by the frozen-account rule, which explicitly lists chargebacks among rejected types.
+
+### 15 — Dispute Test Cases
+
+- **Mode:** Ask + Agent
+- **Context:** Before implementing dispute logic, defined the full set of dispute test cases — both as targeted integration tests (`tests/dispute/mod.rs`) and as scenario shapes for the proptest catalog. Discussed which cases to cover, whether error-only cases belong in the scenario catalog (decided yes — scenarios document behavior and gain value from interleaving), and parameter encoding for each shape.
+- **Outcome:** Six dispute cases implemented as both targeted tests and scenario shapes: happy-path deposit-then-dispute, dispute on a nonexistent tx, dispute on a withdrawal, dispute with insufficient available funds, double dispute on the same tx, and two-deposits-dispute-first (verifying only the targeted deposit is affected). None of the production code was touched — tests are written ahead of implementation, matching the approach used for withdrawals.
