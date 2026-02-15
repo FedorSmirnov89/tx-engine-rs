@@ -734,6 +734,332 @@ impl ScenarioShape for TwoDepositsDisputeAndResolveFirst {
     }
 }
 
+/// Deposit, dispute, chargeback. Funds are reversed, account is frozen.
+/// params: [0] = deposit amount
+pub struct DepositDisputeChargeback;
+
+impl ScenarioShape for DepositDisputeChargeback {
+    fn num_random_parameters(&self) -> usize {
+        1
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let amount = random_parameters[0];
+        let tx_dep = tx_id_offset + 1;
+
+        Scenario {
+            name: "DepositDisputeChargeback",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx_dep}, {amount}"),
+                format!("dispute, {client_id}, {tx_dep},"),
+                format!("chargeback, {client_id}, {tx_dep},"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: Decimal::ZERO,
+                held: Decimal::ZERO,
+                total: Decimal::ZERO,
+                locked: true,
+            },
+            expected_successes: vec![tx_dep, tx_dep, tx_dep],
+            expected_errors: vec![],
+        }
+    }
+}
+
+/// Chargeback referencing a tx that doesn't exist — errors.
+/// params: [0] = deposit amount
+pub struct ChargebackNonexistentTx;
+
+impl ScenarioShape for ChargebackNonexistentTx {
+    fn num_random_parameters(&self) -> usize {
+        1
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let amount = random_parameters[0];
+        let tx_dep = tx_id_offset + 1;
+        let tx_bad = tx_id_offset + 2;
+
+        Scenario {
+            name: "ChargebackNonexistentTx",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx_dep}, {amount}"),
+                format!("chargeback, {client_id}, {tx_bad},"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: amount,
+                held: Decimal::ZERO,
+                total: amount,
+                locked: false,
+            },
+            expected_successes: vec![tx_dep],
+            expected_errors: vec![tx_bad],
+        }
+    }
+}
+
+/// Chargeback on a deposit that was never disputed — errors.
+/// params: [0] = deposit amount
+pub struct ChargebackUndisputedDeposit;
+
+impl ScenarioShape for ChargebackUndisputedDeposit {
+    fn num_random_parameters(&self) -> usize {
+        1
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let amount = random_parameters[0];
+        let tx_dep = tx_id_offset + 1;
+
+        Scenario {
+            name: "ChargebackUndisputedDeposit",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx_dep}, {amount}"),
+                format!("chargeback, {client_id}, {tx_dep},"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: amount,
+                held: Decimal::ZERO,
+                total: amount,
+                locked: false,
+            },
+            expected_successes: vec![tx_dep],
+            expected_errors: vec![tx_dep],
+        }
+    }
+}
+
+/// Deposit, dispute, chargeback, then chargeback again. Second chargeback fails (account frozen).
+/// params: [0] = deposit amount
+pub struct DoubleChargeback;
+
+impl ScenarioShape for DoubleChargeback {
+    fn num_random_parameters(&self) -> usize {
+        1
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let amount = random_parameters[0];
+        let tx_dep = tx_id_offset + 1;
+
+        Scenario {
+            name: "DoubleChargeback",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx_dep}, {amount}"),
+                format!("dispute, {client_id}, {tx_dep},"),
+                format!("chargeback, {client_id}, {tx_dep},"),
+                format!("chargeback, {client_id}, {tx_dep},"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: Decimal::ZERO,
+                held: Decimal::ZERO,
+                total: Decimal::ZERO,
+                locked: true,
+            },
+            expected_successes: vec![tx_dep, tx_dep, tx_dep],
+            expected_errors: vec![tx_dep],
+        }
+    }
+}
+
+/// Deposit, dispute, chargeback, then a new deposit. Second deposit rejected (account frozen).
+/// params: [0] = first deposit amount, [1] = second deposit amount
+pub struct FrozenAccountRejectsDeposit;
+
+impl ScenarioShape for FrozenAccountRejectsDeposit {
+    fn num_random_parameters(&self) -> usize {
+        2
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let amount1 = random_parameters[0];
+        let tx1 = tx_id_offset + 1;
+        let tx2 = tx_id_offset + 2;
+
+        Scenario {
+            name: "FrozenAccountRejectsDeposit",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx1}, {amount1}"),
+                format!("dispute, {client_id}, {tx1},"),
+                format!("chargeback, {client_id}, {tx1},"),
+                format!("deposit, {client_id}, {tx2}, {}", random_parameters[1]),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: Decimal::ZERO,
+                held: Decimal::ZERO,
+                total: Decimal::ZERO,
+                locked: true,
+            },
+            expected_successes: vec![tx1, tx1, tx1],
+            expected_errors: vec![tx2],
+        }
+    }
+}
+
+/// Two deposits, dispute first, chargeback first, then withdrawal. Withdrawal rejected (frozen).
+/// params: [0] = first deposit amount, [1] = second deposit amount
+pub struct FrozenAccountRejectsWithdrawal;
+
+impl ScenarioShape for FrozenAccountRejectsWithdrawal {
+    fn num_random_parameters(&self) -> usize {
+        2
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let amount1 = random_parameters[0];
+        let amount2 = random_parameters[1];
+        let tx1 = tx_id_offset + 1;
+        let tx2 = tx_id_offset + 2;
+        let tx3 = tx_id_offset + 3;
+
+        Scenario {
+            name: "FrozenAccountRejectsWithdrawal",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx1}, {amount1}"),
+                format!("deposit, {client_id}, {tx2}, {amount2}"),
+                format!("dispute, {client_id}, {tx1},"),
+                format!("chargeback, {client_id}, {tx1},"),
+                format!("withdrawal, {client_id}, {tx3}, {amount2}"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: amount2,
+                held: Decimal::ZERO,
+                total: amount2,
+                locked: true,
+            },
+            expected_successes: vec![tx1, tx2, tx1, tx1],
+            expected_errors: vec![tx3],
+        }
+    }
+}
+
+/// Two deposits, dispute first, chargeback first, then dispute second. Second dispute rejected (frozen).
+/// params: [0] = first deposit amount, [1] = second deposit amount
+pub struct FrozenAccountRejectsDispute;
+
+impl ScenarioShape for FrozenAccountRejectsDispute {
+    fn num_random_parameters(&self) -> usize {
+        2
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let amount1 = random_parameters[0];
+        let amount2 = random_parameters[1];
+        let tx1 = tx_id_offset + 1;
+        let tx2 = tx_id_offset + 2;
+
+        Scenario {
+            name: "FrozenAccountRejectsDispute",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx1}, {amount1}"),
+                format!("deposit, {client_id}, {tx2}, {amount2}"),
+                format!("dispute, {client_id}, {tx1},"),
+                format!("chargeback, {client_id}, {tx1},"),
+                format!("dispute, {client_id}, {tx2},"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: amount2,
+                held: Decimal::ZERO,
+                total: amount2,
+                locked: true,
+            },
+            expected_successes: vec![tx1, tx2, tx1, tx1],
+            expected_errors: vec![tx2],
+        }
+    }
+}
+
+/// Two deposits, dispute the first, chargeback the first. Second deposit stays, account frozen.
+/// params: [0] = first deposit amount, [1] = second deposit amount
+pub struct TwoDepositsDisputeAndChargebackFirst;
+
+impl ScenarioShape for TwoDepositsDisputeAndChargebackFirst {
+    fn num_random_parameters(&self) -> usize {
+        2
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let amount1 = random_parameters[0];
+        let amount2 = random_parameters[1];
+        let tx1 = tx_id_offset + 1;
+        let tx2 = tx_id_offset + 2;
+
+        Scenario {
+            name: "TwoDepositsDisputeAndChargebackFirst",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx1}, {amount1}"),
+                format!("deposit, {client_id}, {tx2}, {amount2}"),
+                format!("dispute, {client_id}, {tx1},"),
+                format!("chargeback, {client_id}, {tx1},"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: amount2,
+                held: Decimal::ZERO,
+                total: amount2,
+                locked: true,
+            },
+            expected_successes: vec![tx1, tx2, tx1, tx1],
+            expected_errors: vec![],
+        }
+    }
+}
+
+/// Two deposits, dispute both, chargeback first. Account freezes, second chargeback rejected.
+/// The second deposit's funds remain held (in limbo).
+/// params: [0] = first deposit amount, [1] = second deposit amount
+pub struct FrozenAccountRejectsChargebackOnOtherDispute;
+
+impl ScenarioShape for FrozenAccountRejectsChargebackOnOtherDispute {
+    fn num_random_parameters(&self) -> usize {
+        2
+    }
+
+    fn build(&self, client_id: u16, tx_id_offset: u32, random_parameters: &[Decimal]) -> Scenario {
+        let amount1 = random_parameters[0];
+        let amount2 = random_parameters[1];
+        let tx1 = tx_id_offset + 1;
+        let tx2 = tx_id_offset + 2;
+
+        Scenario {
+            name: "FrozenAccountRejectsChargebackOnOtherDispute",
+            client_id,
+            transactions: vec![
+                format!("deposit, {client_id}, {tx1}, {amount1}"),
+                format!("deposit, {client_id}, {tx2}, {amount2}"),
+                format!("dispute, {client_id}, {tx1},"),
+                format!("dispute, {client_id}, {tx2},"),
+                format!("chargeback, {client_id}, {tx1},"),
+                format!("chargeback, {client_id}, {tx2},"),
+            ],
+            expected_account: AccountRecord {
+                client: client_id,
+                available: Decimal::ZERO,
+                held: amount2,
+                total: amount2,
+                locked: true,
+            },
+            expected_successes: vec![tx1, tx2, tx1, tx2, tx1],
+            expected_errors: vec![tx2],
+        }
+    }
+}
+
 /// Returns all available scenario shapes.
 pub fn all_shapes() -> Vec<Box<dyn ScenarioShape>> {
     vec![
@@ -757,5 +1083,14 @@ pub fn all_shapes() -> Vec<Box<dyn ScenarioShape>> {
         Box::new(DoubleResolve),
         Box::new(ResolveThenReDispute),
         Box::new(TwoDepositsDisputeAndResolveFirst),
+        Box::new(DepositDisputeChargeback),
+        Box::new(ChargebackNonexistentTx),
+        Box::new(ChargebackUndisputedDeposit),
+        Box::new(DoubleChargeback),
+        Box::new(FrozenAccountRejectsDeposit),
+        Box::new(FrozenAccountRejectsWithdrawal),
+        Box::new(FrozenAccountRejectsDispute),
+        Box::new(TwoDepositsDisputeAndChargebackFirst),
+        Box::new(FrozenAccountRejectsChargebackOnOtherDispute),
     ]
 }
