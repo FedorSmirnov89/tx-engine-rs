@@ -45,6 +45,7 @@ pub enum TransactionRecord {
     Withdrawal { client: u16, tx: u32, amount: Money },
     Dispute { client: u16, tx: u32 },
     Resolve { client: u16, tx: u32 },
+    Chargeback { client: u16, tx: u32 },
 }
 
 impl TransactionRecord {
@@ -67,6 +68,10 @@ impl TransactionRecord {
             Transaction::Resolve(r) => TransactionRecord::Resolve {
                 client: r.client_id().into(),
                 tx: r.resolved_tx_id().into(),
+            },
+            Transaction::Chargeback(c) => TransactionRecord::Chargeback {
+                client: c.client_id().into(),
+                tx: c.reverted_tx_id().into(),
             },
         }
     }
@@ -92,6 +97,9 @@ impl fmt::Display for TransactionRecord {
             }
             TransactionRecord::Resolve { client, tx } => {
                 write!(f, "Resolve {{ client: {client}, tx: {tx} }}")
+            }
+            TransactionRecord::Chargeback { client, tx } => {
+                write!(f, "Chargeback {{ client: {client}, tx: {tx} }}")
             }
         }
     }

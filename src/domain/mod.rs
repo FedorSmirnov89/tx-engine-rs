@@ -13,6 +13,7 @@ pub(crate) enum Transaction {
     Withdrawal(Withdrawal),
     Dispute(Dispute),
     Resolve(Resolve),
+    Chargeback(Chargeback),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -102,6 +103,29 @@ impl Dispute {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Chargeback {
+    client_id: ClientId,
+    reverted_tx: TxId,
+}
+
+impl Chargeback {
+    pub(crate) fn new(client_id: ClientId, reverted_tx: TxId) -> Self {
+        Self {
+            client_id,
+            reverted_tx,
+        }
+    }
+
+    pub(crate) fn client_id(&self) -> ClientId {
+        self.client_id
+    }
+
+    pub(crate) fn reverted_tx_id(&self) -> TxId {
+        self.reverted_tx
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Resolve {
     client_id: ClientId,
     resolved_tx: TxId,
@@ -179,13 +203,18 @@ impl AccountState {
         }
     }
 
-    pub(crate) fn deposit(&mut self, deposit: Deposit) {
+    pub(crate) fn deposit(&mut self, deposit: Deposit) -> Result<(), String> {
+        self.ensure_not_locked()?;
+
         self.available += deposit.amount();
         self.accepted_deposits
             .insert(deposit.tx_id(), deposit.amount());
+        Ok(())
     }
 
     pub(crate) fn withdraw(&mut self, amount: Money) -> Result<(), String> {
+        self.ensure_not_locked()?;
+
         if self.available >= amount {
             self.available -= amount;
             Ok(())
@@ -195,6 +224,8 @@ impl AccountState {
     }
 
     pub(crate) fn dispute(&mut self, disputed_tx: TxId) -> Result<(), String> {
+        self.ensure_not_locked()?;
+
         if let Some(deposit_amount) = self.accepted_deposits.get(&disputed_tx) {
             if self.available >= *deposit_amount {
                 let disputed_amount = self
@@ -214,10 +245,12 @@ impl AccountState {
     }
 
     pub(crate) fn resolve(&mut self, resolved_tx: TxId) -> Result<(), String> {
+        self.ensure_not_locked()?;
+
         if let Some(resolved_amount) = self.disputed_deposits.remove(&resolved_tx) {
             debug_assert!(
                 self.held_funds() >= resolved_amount,
-                "internal logic error: held funds too low"
+                "internal logic error: held funds too low during resolve"
             );
             self.held -= resolved_amount;
             self.available += resolved_amount;
@@ -225,6 +258,30 @@ impl AccountState {
             Ok(())
         } else {
             Err("resolve referencing unknown/undisputed transaction".to_string())
+        }
+    }
+
+    pub(crate) fn chargeback(&mut self, reverted_tx: TxId) -> Result<(), String> {
+        self.ensure_not_locked()?;
+
+        if let Some(reverted_amount) = self.disputed_deposits.remove(&reverted_tx) {
+            debug_assert!(
+                self.held_funds() >= reverted_amount,
+                "internal logic error: held funds too low during chargeback"
+            );
+            self.held -= reverted_amount;
+            self.locked = true;
+            Ok(())
+        } else {
+            Err("chargeback referencing unknown/undisputed transaction".to_string())
+        }
+    }
+
+    fn ensure_not_locked(&self) -> Result<(), String> {
+        if self.locked {
+            Err("account locked: transaction rejected".to_string())
+        } else {
+            Ok(())
         }
     }
 
