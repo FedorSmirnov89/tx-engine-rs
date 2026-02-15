@@ -10,7 +10,19 @@ TODO
 
 - **Zero-amount deposits are rejected.** A deposit of `0.0` has no effect on account balances but would still consume memory when stored for dispute resolution. These are treated as invalid input.
 
+- **Zero-amount withdrawals are rejected.** Same reasoning as zero-amount deposits — no effect on balances, waste of processing and storage.
+
 - **Erroneous transactions are skipped, not fatal.** Errors in the input CSV are handled per transaction — an invalid or malformed row is reported to the caller and otherwise ignored. Processing continues with the remaining transactions. This aligns with safely ignoring nonsensical operations regarding, e.g., disputes referencing non-existing transactions.
+
+- **Only deposits can be disputed.** A dispute on a withdrawal is ignored. If a client is unhappy with a withdrawal, the recourse is with the destination they withdrew to — our system has no mechanism to "undo" funds that have already left. Conversely, disputing a deposit (incoming funds) is the standard chargeback model: the sender claims the transfer was erroneous, and we must act to prevent a double spend.
+
+- **A dispute is rejected when available funds are insufficient.** If a client deposits 100, withdraws 80, and then disputes the original deposit of 100, the engine would need to move 100 from `available` to `held` — but only 20 remains. Allowing this would produce a negative `available` balance, effectively granting the client credit, which is outside the scope of this system. Instead, the dispute is rejected as a processing error. This is consistent with how withdrawals (as the other transaction where the system could be designed to grant credit) are handled: both are operations that attempt to reduce `available`, and both fail when the balance is too low. In a real-world platform, negative balances and debt recovery would be a separate subsystem.
+
+- **A transaction can only be under one active dispute at a time.** A second dispute on a transaction that is already disputed is ignored. There is no meaningful distinction between "disputed once" and "disputed twice" — the same funds are already held.
+
+- **A frozen account rejects all subsequent transactions.** Once a chargeback freezes an account (`locked = true`), no further deposits, withdrawals, disputes, resolves, or chargebacks are processed for that client. The intended behavior is that the account should be immediately frozen but it is unspecified what happens next; treating it as a hard lock is the safest default and prevents further exposure on a potentially fraudulent account.
+
+- **After a resolve, a transaction may be disputed again.** A resolve returns the transaction to its original, non-disputed state. If a new dispute is later submitted for the same transaction, it is processed normally. This reflects the real-world possibility of a dispute being reopened after initial resolution.
 
 ## Design Decisions
 
