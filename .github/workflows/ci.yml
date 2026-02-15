@@ -21,7 +21,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.92
-          components: rustfmt, llvm-tools-preview
+          components: rustfmt, llvm-tools-preview, clippy
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
@@ -29,7 +29,7 @@ jobs:
       - name: Install Tools
         uses: taiki-e/install-action@v2
         with:
-          tool: cargo-deny, cargo-clippy, cargo-nextest, cargo-llvm-cov
+          tool: cargo-deny, cargo-nextest, cargo-llvm-cov
 
       - name: Run rustfmt 
         run: cargo fmt --all --check
