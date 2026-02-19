@@ -6,6 +6,9 @@ use rstest::rstest;
 
 use super::*;
 
+pub(crate) const TYPE_KW_DEPOSIT: &str = "deposit";
+pub(crate) const TYPE_KW_WITHDRAWAL: &str = "withdrawal";
+
 /// Helper: parse a CSV string and collect all results.
 fn parse_csv(input: &str) -> Vec<Result<Transaction, Error>> {
     parse_transactions(input.as_bytes()).collect()

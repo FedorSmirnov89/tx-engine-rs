@@ -10,8 +10,6 @@ use crate::domain::{
 };
 use crate::error::{Error, validation_error};
 
-pub(crate) const TYPE_KW_DEPOSIT: &str = "deposit";
-pub(crate) const TYPE_KW_WITHDRAWAL: &str = "withdrawal";
 pub(crate) const TYPE_KW_DISPUTE: &str = "dispute";
 pub(crate) const TYPE_KW_RESOLVE: &str = "resolve";
 pub(crate) const TYPE_KW_CHARGEBACK: &str = "chargeback";
@@ -39,88 +37,87 @@ pub(crate) fn parse_transactions(
 #[derive(Deserialize)]
 struct RawTransaction {
     #[serde(rename = "type")]
-    tx_type: String,
+    tx_type: TxType,
     client: u16,
     tx: u32,
     amount: Option<Decimal>,
+}
+
+#[derive(Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum TxType {
+    Deposit,
+    Withdrawal,
+    Dispute,
+    Resolve,
+    Chargeback,
 }
 
 impl TryFrom<RawTransaction> for Transaction {
     type Error = crate::error::Error;
 
     fn try_from(raw: RawTransaction) -> Result<Self, Self::Error> {
-        let RawTransaction {
-            tx_type,
-            client,
-            tx,
-            amount,
-        } = raw;
+        let client_id = ClientId::new(raw.client);
+        let tx_id = TxId::new(raw.tx);
+        let amount = raw.amount;
 
-        let client_id = ClientId::new(client);
-        let tx_id = TxId::new(tx);
-
-        match tx_type.as_str() {
-            TYPE_KW_DEPOSIT => {
-                let Some(amount) = amount else {
-                    return Err(validation_error(
-                        client,
-                        tx,
-                        "no amount provided for deposit",
-                    ));
-                };
+        match raw.tx_type {
+            TxType::Deposit => {
+                let amount = amount.ok_or_else(|| {
+                    validation_error(
+                        raw.client,
+                        raw.tx,
+                        "an amount must be provided with a deposit transaction",
+                    )
+                })?;
                 Ok(Transaction::Deposit(
                     Deposit::new(client_id, tx_id, amount)
-                        .map_err(|msg| validation_error(client, tx, msg))?,
+                        .map_err(|msg| validation_error(raw.client, raw.tx, msg))?,
                 ))
             }
-            TYPE_KW_WITHDRAWAL => {
-                let Some(amount) = amount else {
-                    return Err(validation_error(
-                        client,
-                        tx,
-                        "no amount provided for withdrawal",
-                    ));
-                };
+            TxType::Withdrawal => {
+                let amount = amount.ok_or_else(|| {
+                    validation_error(
+                        raw.client,
+                        raw.tx,
+                        "an amount must be provided with a withdrawal transaction",
+                    )
+                })?;
                 Ok(Transaction::Withdrawal(
                     Withdrawal::new(client_id, tx_id, amount)
-                        .map_err(|msg| validation_error(client, tx, msg))?,
+                        .map_err(|msg| validation_error(raw.client, raw.tx, msg))?,
                 ))
             }
-            TYPE_KW_DISPUTE => {
+            TxType::Dispute => {
                 if amount.is_some() {
                     return Err(validation_error(
-                        client_id,
-                        tx_id,
+                        raw.client,
+                        raw.tx,
                         "an amount must not be provided with a dispute transaction",
                     ));
                 }
                 Ok(Transaction::Dispute(Dispute::new(client_id, tx_id)))
             }
-            TYPE_KW_RESOLVE => {
+            TxType::Resolve => {
                 if amount.is_some() {
                     return Err(validation_error(
-                        client_id,
-                        tx_id,
+                        raw.client,
+                        raw.tx,
                         "an amount must not be provided with a resolve transaction",
                     ));
                 }
                 Ok(Transaction::Resolve(Resolve::new(client_id, tx_id)))
             }
-            TYPE_KW_CHARGEBACK => {
+            TxType::Chargeback => {
                 if amount.is_some() {
                     return Err(validation_error(
-                        client_id,
-                        tx_id,
+                        raw.client,
+                        raw.tx,
                         "an amount must not be provided with a chargeback transaction",
                     ));
                 }
                 Ok(Transaction::Chargeback(Chargeback::new(client_id, tx_id)))
             }
-            other => Err(validation_error(
-                client,
-                tx,
-                format!("unknown transaction type: {other}"),
-            )),
         }
     }
 }
