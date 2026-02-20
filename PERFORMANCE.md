@@ -108,3 +108,9 @@ The Criterion benchmarks yielded the following improvements across ~176,000 rows
 This optimization further reinforces the architectural conclusions drawn above. Because the CSV parser operates sequentially on the main thread in both architectures, the absolute time saved by removing the memory allocation is nearly identical (~25–27 ms) in both modes. 
 
 However, the proportional impact differs drastically. In the sequential mode, saving 27 ms on an already highly optimized 186 ms pipeline yields a massive 15% performance gain. In the parallel mode, that same 27 ms of saved parser time is drowned out by the ~440 ms of channel synchronization overhead.
+
+## Experiment: CPU Core Affinity (Thread Pinning)
+
+To determine if operating system context switching and L1/L2 cache thrashing were introducing hidden overhead to the sequential engine, an experiment was conducted using CPU core pinning via the `core_affinity` crate. The main execution thread was explicitly locked to a single, isolated hardware core to bypass the OS scheduler. To ensure accurate telemetry, the benchmarks were controlled for thermal throttling, and background hardware interrupts were mitigated by targeting the least active core. 
+
+The Criterion results demonstrated a statistically insignificant variance (`p = 0.06 > 0.05`) between the pinned and unpinned executions, with throughput remaining flat at ~1.13 million elements/second. This result clearly demonstrates that the throughput of the single-threaded engine does not profit from explicit core pinning. Given the lack of a measurable performance gain, we opted against introducing OS-specific CPU affinity logic into the `main` application.
