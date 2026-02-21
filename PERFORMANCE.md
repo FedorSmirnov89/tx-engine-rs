@@ -2,6 +2,16 @@
 
 This document captures the reasoning, methodology, and results of performance optimisation work on the transaction engine.
 
+## Test Environment
+
+All benchmarks were executed on a consumer laptop environment (plugged into power, high-performance profile, isolated background tasks).
+
+* **OS:** Ubuntu 22.04.5 LTS (Kernel: 6.8.0-100-generic)
+* **CPU:** Intel(R) Core(TM) i7-8565U CPU @ 1.80GHz (Mobile)
+* **Cores:** 4 Physical Cores / 8 Logical Threads (1 NUMA node)
+* **RAM:** 16 GB 
+* **Rust Toolchain:** `cargo bench` via Criterion (Release profile, optimized)
+
 ## Benchmark Input: Scenario-Based Generation vs Random Traces
 
 A benchmark is only as meaningful as its input. For the transaction engine, two approaches to generating large benchmark inputs were considered:
@@ -114,3 +124,9 @@ However, the proportional impact differs drastically. In the sequential mode, sa
 To determine if operating system context switching and L1/L2 cache thrashing were introducing hidden overhead to the sequential engine, an experiment was conducted using CPU core pinning via the `core_affinity` crate. The main execution thread was explicitly locked to a single, isolated hardware core to bypass the OS scheduler. To ensure accurate telemetry, the benchmarks were controlled for thermal throttling, and background hardware interrupts were mitigated by targeting the least active core. 
 
 The Criterion results demonstrated a statistically insignificant variance (`p = 0.06 > 0.05`) between the pinned and unpinned executions, with throughput remaining flat at ~1.13 million elements/second. This result clearly demonstrates that the throughput of the single-threaded engine does not profit from explicit core pinning. Given the lack of a measurable performance gain, we opted against introducing OS-specific CPU affinity logic into the `main` application.
+
+## Flamegraph Optimization: Bypassing Intermediate Float Allocations during Deserialization
+
+Profiling the sequential execution using `cargo-flamegraph` revealed a significant CPU bottleneck during the CSV reading phase, specifically centralized around `malloc` and `to_string` calls. The root cause was traced to the default deserialization behavior between the `csv` and `rust_decimal` crates. By default, the `csv` crate parsed transaction amounts as `f64` floats. To safely convert these into precise `Decimal` types without data loss, `rust_decimal` defensively allocated heap memory to convert the float back to a string before parsing it, resulting in a hidden `malloc` and `drop` per row.
+
+To resolve this, we explicitly bypassed the `f64` intermediate step by applying the `#[serde(with = "rust_decimal::serde::str_option")]` attribute to the amount field in the raw transaction struct. This forced the deserializer to parse the `Decimal` directly from the raw string bytes. This zero-allocation fix eliminated 175,000 heap operations per run, yielding a statistically significant 9.5% increase in throughput and dropping execution time from ~155ms to ~142ms.

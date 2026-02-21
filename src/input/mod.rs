@@ -40,6 +40,7 @@ struct RawTransaction {
     tx_type: TxType,
     client: u16,
     tx: u32,
+    #[serde(with = "rust_decimal::serde::str_option")]
     amount: Option<Decimal>,
 }
 

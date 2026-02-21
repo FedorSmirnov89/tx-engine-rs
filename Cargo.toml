@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.101"
 csv = "1.4.0"
-rust_decimal = { version = "1.40.0", features = ["serde"] }
+rust_decimal = { version = "1.40.0", features = ["serde", "serde-with-str"] }
 serde = { version = "1.0.228", features = ["derive"] }
 thiserror = "2.0.18"
 tracing = "0.1.44"
